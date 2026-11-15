@@ -1,0 +1,30 @@
+[Unit]
+Description=CN25 authenticated CloudCLI manager console
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=exec
+User=cn25-manager
+Group=cn25-manager
+WorkingDirectory=/srv/review/manager-home/workspace
+Environment=HOME=/srv/review/manager-home
+Environment=CODEX_HOME=/srv/review/manager-home/.codex
+Environment=CN25_MANAGER_MODE=1
+Environment=CN25_MANAGER_CODEX_PATH=/srv/review/manager-toolchain/b8a11fedf24b2dfb59a70c9e52b030f9a508dcd49cd2dd0d41956f4c785156b8/codex
+Environment=PATH=/srv/review/manager-toolchain/b8a11fedf24b2dfb59a70c9e52b030f9a508dcd49cd2dd0d41956f4c785156b8:/srv/review/tools/node-v22.23.4-linux-x64/bin:/usr/local/bin:/usr/bin:/bin
+Environment=NODE_ENV=production
+Environment=HOST=127.0.0.1
+Environment=SERVER_PORT=3301
+Environment=DATABASE_PATH=/srv/review/manager-home/.cloudcli/auth.db
+EnvironmentFile=/srv/review/secrets/bifrost.env
+UMask=0077
+ExecStart=/srv/review/tools/node-v22.23.4-linux-x64/bin/node /srv/review/cloudcli/current/dist-server/server/index.js
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=45
+StandardOutput=append:/srv/review/controller/cloudcli-first-20261115/console.log
+StandardError=append:/srv/review/controller/cloudcli-first-20261115/console.log
+
+[Install]
+WantedBy=multi-user.target

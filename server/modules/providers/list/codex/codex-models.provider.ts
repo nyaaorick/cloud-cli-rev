@@ -3,6 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 import TOML from '@iarna/toml';
+import { codexManagerService } from './codex-manager.service.js';
 
 import type { IProviderModels } from '@/shared/interfaces.js';
 import type {
@@ -167,10 +168,18 @@ const CODEX_CONFIG_PATH = path.join(os.homedir(), '.codex', 'config.toml');
 /** Provider registry model adapter for Codex predefined models and active config. */
 export class CodexProviderModels implements IProviderModels {
   async getSupportedModels(): Promise<ProviderModelsDefinition> {
+    const manager = codexManagerService.getProfile();
+    if (manager) return {
+      DEFAULT: manager.model,
+      OPTIONS: CODEX_PREDEFINED_MODELS.OPTIONS.filter((option) => option.value === manager.model)
+        .map((option) => ({ ...option, effort: { default: manager.effort, values: [{ value: manager.effort }] } })),
+    };
     return CODEX_PREDEFINED_MODELS;
   }
 
   async getCurrentActiveModel(): Promise<ProviderCurrentActiveModel> {
+    const manager = codexManagerService.getProfile();
+    if (manager) return { model: manager.model };
     try {
       const raw = await readFile(CODEX_CONFIG_PATH, 'utf8');
       const parsed = readObjectRecord(TOML.parse(raw));

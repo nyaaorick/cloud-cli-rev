@@ -28,6 +28,7 @@ import type { AnyRecord, ProviderRuntimeContext, ProviderRuntimeWriter } from '@
 import type { SideQuestionOutcome, SideQuestionRequest, SideQuestionSink } from '@/shared/types.js';
 
 import { codexAppServer } from './codex-app-server.client.js';
+import { codexManagerService } from './codex-manager.service.js';
 
 type ActiveCodexSession = {
   thread: Thread;
@@ -283,16 +284,17 @@ async function queryCodex(
   // provider-native id recorded on the session row.
   const providerSessionId = context.resolveProviderSessionId(sessionId);
 
-  const resolvedModel = await context.resolveResumeModel(sessionId, model);
+  const manager = codexManagerService.getProfile();
+  const resolvedModel = manager?.model || await context.resolveResumeModel(sessionId, model);
 
   const workingDirectory = cwd || projectPath || process.cwd();
-  const { sandboxMode, approvalPolicy } = mapPermissionModeToCodexOptions(permissionMode);
+  const { sandboxMode, approvalPolicy } = mapPermissionModeToCodexOptions(manager ? 'bypassPermissions' : permissionMode);
   const catalog = await context.getProviderModels();
   const selectedModel = catalog.OPTIONS.find((option) => option.value === resolvedModel) || null;
   const allowedEfforts = selectedModel?.effort?.values?.map((value) => value.value) || [];
-  const resolvedEffort = typeof effort === 'string' && effort !== 'default' && allowedEfforts.includes(effort)
+  const resolvedEffort = manager?.effort || (typeof effort === 'string' && effort !== 'default' && allowedEfforts.includes(effort)
     ? effort as ModelReasoningEffort
-    : undefined;
+    : undefined);
 
   let codex: Codex;
   let thread: Thread;
@@ -324,7 +326,7 @@ async function queryCodex(
   const sessionKey = () => sessionId || capturedSessionId || null;
 
   try {
-    codex = new Codex();
+    codex = new Codex(manager ? { codexPathOverride: manager.cliPath, config: manager.config } : undefined);
 
     const threadOptions: ThreadOptions = {
       workingDirectory,

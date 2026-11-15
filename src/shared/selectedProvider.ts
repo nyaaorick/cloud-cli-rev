@@ -18,7 +18,7 @@ import { readUserPreference, writeUserPreference } from '@/shared/userSettings';
 
 const PROVIDERS: LLMProvider[] = ['claude', 'cursor', 'codex', 'opencode'];
 
-const DEFAULT_PROVIDER: LLMProvider = 'claude';
+const DEFAULT_PROVIDER: LLMProvider = import.meta.env.VITE_CN25_MANAGER_MODE === '1' ? 'codex' : 'claude';
 
 export function readSelectedProvider(): LLMProvider {
   const stored = readUserPreference<string | null>('selectedProvider', null);

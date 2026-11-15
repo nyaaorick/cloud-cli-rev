@@ -152,10 +152,13 @@ const PROVIDER_CAPABILITIES: Record<LLMProvider, ProviderCapabilities> = {
  */
 export const providerCapabilitiesService = {
   getProviderCapabilities(provider: LLMProvider): ProviderCapabilities {
+    if (provider === 'codex' && process.env.CN25_MANAGER_MODE === '1') {
+      return { ...PROVIDER_CAPABILITIES.codex, permissionModes: ['bypassPermissions'], defaultPermissionMode: 'bypassPermissions', effortLevels: ['xhigh'] };
+    }
     return PROVIDER_CAPABILITIES[provider];
   },
 
   listAllProviderCapabilities(): ProviderCapabilities[] {
-    return Object.values(PROVIDER_CAPABILITIES);
+    return Object.values(PROVIDER_CAPABILITIES).map((capability) => this.getProviderCapabilities(capability.provider));
   },
 };

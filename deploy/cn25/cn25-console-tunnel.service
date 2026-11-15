@@ -1,0 +1,17 @@
+[Unit]
+Description=CN25 CloudCLI isolated reverse SSH tunnel
+Wants=network-online.target cn25-console.service
+After=network-online.target cn25-console.service
+
+[Service]
+Type=exec
+User=root
+UMask=0077
+ExecStart=/usr/bin/ssh -N -T -F /srv/review/secrets/manager-access/ssh_config -o ExitOnForwardFailure=yes -o ServerAliveInterval=20 -o ServerAliveCountMax=3 -o ConnectTimeout=15 -R 127.0.0.1:13301:127.0.0.1:3301 console-vps
+Restart=always
+RestartSec=5
+StandardOutput=append:/srv/review/controller/cloudcli-first-20261115/tunnel.log
+StandardError=append:/srv/review/controller/cloudcli-first-20261115/tunnel.log
+
+[Install]
+WantedBy=multi-user.target

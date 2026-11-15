@@ -34,7 +34,7 @@ const FALLBACK_DEFAULT_MODEL: Record<LLMProvider, string> = {
   // The server catalog's DEFAULT. A new browser keeps this model for as long
   // as the catalog lists it, so it must be one the bundled Codex CLI knows;
   // any other model runs on the CLI's fallback metadata.
-  codex: 'gpt-5.6-sol',
+  codex: import.meta.env.VITE_CN25_MANAGER_MODE === '1' ? 'gpt-6.1-sol' : 'gpt-5.6-sol',
   opencode: 'anthropic/claude-sonnet-4-5',
 };
 
@@ -130,7 +130,8 @@ const getSessionSelectionKey = (provider: LLMProvider, sessionId: string): strin
 );
 
 export function useChatProviderState({ selectedSession, selectedProject: _selectedProject }: UseChatProviderStateArgs) {
-  const [permissionMode, setPermissionMode] = useState<PermissionMode>('default');
+  // Manager builds open with the same Full Access enforced by the server.
+  const [permissionMode, setPermissionMode] = useState<PermissionMode>(import.meta.env.VITE_CN25_MANAGER_MODE === '1' ? 'bypassPermissions' : 'default');
   const [pendingPermissionRequests, setPendingPermissionRequests] = useState<PendingPermissionRequest[]>([]);
   // The provider the composer sends under. Held here rather than read from
   // storage per render because switching it has to reset the model menu, the

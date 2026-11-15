@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import { stat } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import readline from 'node:readline';
+import { codexManagerService } from './codex-manager.service.js';
 
 import {
   AppError,
@@ -95,8 +96,10 @@ async function withAppServer<T>(
   // Resolved through the exported object, not a module-local function, so
   // tests can replace `codexAppServer.resolveLauncher` with a fake app-server
   // script the same way they already replace `forkThread`.
-  const launcher = codexAppServer.resolveLauncher();
-  const child = spawn(process.execPath, [launcher, 'app-server'], {
+  const manager = codexManagerService.getProfile();
+  const launcher = manager ? manager.cliPath : codexAppServer.resolveLauncher();
+  const args = manager ? ['app-server', ...codexManagerService.getCliConfigArgs()] : [launcher, 'app-server'];
+  const child = spawn(manager ? launcher : process.execPath, args, {
     env: process.env,
     stdio: ['pipe', 'pipe', 'pipe'],
   });
@@ -298,11 +301,13 @@ export const codexAppServer = {
     lastTurnId?: string;
     cwd: string;
   }): Promise<CodexThreadFork> {
+    const manager = codexManagerService.getProfile();
     return withAppServer(async ({ call }) => {
       const result = await call('thread/fork', {
         threadId: input.threadId,
         ...(input.lastTurnId ? { lastTurnId: input.lastTurnId } : {}),
         ...(input.cwd ? { cwd: input.cwd } : {}),
+        ...(manager ? { model: manager.model, approvalPolicy: 'never', sandbox: 'danger-full-access', developerInstructions: manager.config.developer_instructions, config: manager.config } : {}),
       }) as { thread?: { id?: unknown; path?: unknown } } | undefined;
 
       const threadId = typeof result?.thread?.id === 'string' ? result.thread.id : '';
@@ -522,13 +527,14 @@ export const codexAppServer = {
           return call('thread/fork', {
             threadId: input.threadId,
             ...(input.cwd ? { cwd: input.cwd } : {}),
-            ...(input.model ? { model: input.model } : {}),
+            ...(codexManagerService.getProfile() ? { model: 'gpt-6.1-sol' } : input.model ? { model: input.model } : {}),
             ephemeral: true,
             sandbox: 'read-only',
             approvalPolicy: 'never',
-            developerInstructions: SIDE_CONVERSATION_DEVELOPER_INSTRUCTIONS,
+            developerInstructions: [codexManagerService.getProfile()?.config.developer_instructions, SIDE_CONVERSATION_DEVELOPER_INSTRUCTIONS].filter(Boolean).join('\n\n'),
             excludeTurns: true,
             config: {
+              ...(codexManagerService.getProfile()?.config || {}),
               mcp_servers: mcpServers,
               web_search: 'disabled',
               apps,

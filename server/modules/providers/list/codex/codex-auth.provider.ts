@@ -6,6 +6,7 @@ import path from 'node:path';
 import type { IProviderAuth } from '@/shared/interfaces.js';
 import type { CliVersionProbe, ProviderAuthStatus } from '@/shared/types.js';
 import { probeCliVersion, readObjectRecord, readOptionalString } from '@/shared/utils.js';
+import { codexManagerService } from './codex-manager.service.js';
 
 type CodexCredentialsStatus = {
   authenticated: boolean;
@@ -21,6 +22,11 @@ export class CodexProviderAuth implements IProviderAuth {
    * `@openai/codex-sdk` resolves from node_modules, not a `codex` on PATH.
    */
   checkInstalled(): CliVersionProbe {
+    if (process.env.CN25_MANAGER_MODE === '1') {
+      return process.env.CN25_MANAGER_CODEX_PATH
+        ? probeCliVersion(process.env.CN25_MANAGER_CODEX_PATH, ['--version'])
+        : { installed: false, exitCode: null, version: null };
+    }
     let launcherPath: string;
     try {
       launcherPath = createRequire(import.meta.url).resolve('@openai/codex/bin/codex.js');
@@ -35,6 +41,15 @@ export class CodexProviderAuth implements IProviderAuth {
    */
   async getStatus(): Promise<ProviderAuthStatus> {
     const { installed, version: installedVersion } = this.checkInstalled();
+    if (process.env.CN25_MANAGER_MODE === '1') {
+      let ready = false;
+      try { ready = installed && await codexManagerService.checkReady(); } catch { /* Fail closed without leaking config. */ }
+      return {
+        installed, installedVersion, provider: 'codex', authenticated: ready,
+        email: null, method: 'custom_provider',
+        error: ready ? undefined : 'BF native readiness check failed; no OAuth fallback.',
+      };
+    }
     const credentials = await this.checkCredentials();
 
     return {
