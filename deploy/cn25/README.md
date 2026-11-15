@@ -42,3 +42,46 @@ root systemd unit. It checks ownership of the published vhost, removes only that
 vhost with nginx validation/reload, and disables/stops only the two console units.
 It preserves credentials, SQLite state, native history, artifact, DNS/TLS recovery
 material and every manager/review service. No queue/history snapshot is restored.
+
+## Existing-console upgrade: ingress and forward ownership
+
+Rev acceptance uses `https://cn25.foliodude.it.com:2096`, after verifying that
+2096 is not configured or listening on the VPS. Cloudflare's ordinary HTTPS
+proxy supports 443, 2053, 2083, 2087, 2096 and 8443; it does **not** support 8444.
+See https://developers.cloudflare.com/fundamentals/reference/network-ports/ .
+Keep the primary 8443 upstream unchanged while existing runs drain. Validate
+public TLS, owner login, the existing native steer history and a stable
+WebSocket on the acceptance port before changing only the primary upstream.
+Use an independent systemd update unit, preserve the active console/manager
+processes, and retain a config backup with nginx validation and graceful reload.
+Do not rerun the first-consumer installer against an existing deployment.
+
+`cn25-console-forward.service` replaces the two competing tunnel supervisors.
+It owns **both** remote loopback forwards (13301 to local3301 and13302 to3302)
+in one SSH connection. Install `forward-client.py` as a root-owned0600 file in
+`/srv/review/controller/cloudcli-forward-20261115/`, and `forward-lease.py` as
+root-owned0600 `/etc/cn25-console/forward-lease.py` on the VPS. The existing SSH
+configuration supplies authentication; neither helper reads or logs credentials.
+Disable and stop only the two old forward units before transferring ownership.
+Inspect exact existing listeners before the initial takeover; unknown owners
+are preserved rather than killed. Keep all application services running.
+
+The client takes a local exclusive lock and sends a heartbeat every10 seconds.
+The server takes another exclusive lock, checks that the forwarding sshd is its
+own ancestor and owns only the dedicated pair, and expires the lease after40
+seconds without a heartbeat or immediately on EOF. Reclamation validates the
+PID's start time and exact listening ports again; it cannot target the sshd
+listener or an unrelated SSH session. The client deadline is45 seconds and
+systemd retries after50 seconds, allowing remote expiry before reconnection.
+No global sshd policy, shared credentials, application history or worker
+configuration is changed. Status files contain only lifecycle metadata.
+
+Run the failure-boundary tests with Python3.9 or newer:
+
+```
+python3 -m unittest discover -s deploy/cn25/tests -p 'test_*.py'
+```
+
+For a production acceptance, separately verify that missing heartbeats release
+isolated test forward ports while the production owner stays unchanged. Retain
+failed attempts and check unknown remote outcomes before retrying mutations.

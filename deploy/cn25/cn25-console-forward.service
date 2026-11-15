@@ -1,0 +1,18 @@
+[Unit]
+Description=CN25 console sole reverse-forward owner with remote heartbeat lease
+Wants=network-online.target cn25-console.service cn25-console-rev.service
+After=network-online.target cn25-console.service cn25-console-rev.service
+StartLimitIntervalSec=0
+[Service]
+Type=exec
+User=root
+UMask=0077
+ExecStart=/usr/bin/python3 /srv/review/controller/cloudcli-forward-20261115/forward-client.py
+Restart=on-failure
+RestartSec=50
+TimeoutStopSec=10
+KillMode=mixed
+StandardOutput=null
+StandardError=null
+[Install]
+WantedBy=multi-user.target
