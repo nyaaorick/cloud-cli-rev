@@ -30,6 +30,15 @@ def receipt(name, value):
     p.chmod(0o600)
 
 
+def tree_digest(directory):
+    digest = hashlib.sha256()
+    for p in sorted(directory.rglob('*')):
+        if p.is_file():
+            digest.update(str(p.relative_to(directory)).encode() + b'\0')
+            digest.update(hashlib.sha256(p.read_bytes()).digest())
+    return digest.hexdigest()
+
+
 def http(path, body=None, token=None, method=None):
     headers = {'Content-Type': 'application/json'}
     if token:
@@ -51,16 +60,26 @@ def main():
     assert approval['sha'] == sha and approval['approved'] is True, 'Independent final SHA review is required'
     tests = json.loads((BASE / 'tests-approved.json').read_text())
     assert tests['sha'] == sha and tests['passed'] is True, 'Final source checks are required'
+    assert tests['lockfile_sha256'] == hashlib.sha256((SOURCE / 'package-lock.json').read_bytes()).hexdigest()
+    assert tests['build_parameters'] == {'node': 'v22.23.4', 'VITE_CN25_MANAGER_MODE': '1'}
+    assert tests['dependency_sha256'] == tree_digest(SOURCE / 'node_modules'), 'Tested dependency tree changed before packaging'
+    for name in ['dist', 'dist-server']:
+        assert tests['compiled_sha256'][name] == tree_digest(SOURCE / name), 'Tested build changed before packaging'
     receipt('progress.json', {'phase': 'artifact', 'source_sha': sha, 'updated_at': datetime.datetime.now(datetime.timezone.utc).isoformat()})
     release = ROOT / 'releases' / sha
     assert not release.exists(), 'Release path already exists; inspect prior result before retry'
-    release.mkdir(parents=True)
+    release.parent.mkdir(mode=0o755, exist_ok=True)
+    release.parent.chmod(0o755)
+    release.mkdir(mode=0o755)
     archive = subprocess.Popen(['git', '-C', str(SOURCE), 'archive', sha], stdout=subprocess.PIPE)
     run(['tar', '-x', '-C', str(release)], stdin=archive.stdout)
     archive.stdout.close()
     assert archive.wait() == 0
     for name in ['dist', 'dist-server', 'node_modules']:
         shutil.copytree(SOURCE / name, release / name, symlinks=True)
+    for name in ['dist', 'dist-server']:
+        assert tests['compiled_sha256'][name] == tree_digest(release / name), 'Packaged build differs from tested build'
+    assert tests['dependency_sha256'] == tree_digest(release / 'node_modules')
     # Root owns the deployable code; console state lives exclusively in the manager home.
     for root, dirs, files in os.walk(release):
         os.chown(root, 0, 0)
@@ -80,6 +99,7 @@ def main():
         for chunk in iter(lambda: stream.read(1024 * 1024), b''):
             digest.update(chunk)
     receipt('artifact.json', {'source_sha': sha, 'upstream': '2053f3d7a086fd44f7fe373c913da487629b0a95', 'version': '1.37.8', 'artifact': str(artifact), 'sha256': digest.hexdigest(), 'release': str(release)})
+    run(['sudo', '-n', '-u', 'cn25-manager', 'test', '-r', str(release / 'dist-server/server/index.js')])
     current = ROOT / 'current'
     previous = str(current.resolve()) if current.exists() else None
     assert not previous, 'Existing deployment requires an explicit recorded update path'

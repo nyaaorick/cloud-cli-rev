@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 """Publish only the independently staged console vhost, with local rollback."""
 import datetime
+import hashlib
 import json
 import pathlib
 import subprocess
@@ -13,8 +14,17 @@ if target.exists() and not (base / 'published.json').exists():
 with urllib.request.urlopen('http://127.0.0.1:13301/api/auth/status', timeout=15) as response:
     assert json.load(response)['needsSetup'] is False, 'Owner must exist before exposure'
 previous = target.read_bytes() if target.exists() else None
+planned = (base / 'nginx.conf').read_bytes()
+if previous is not None:
+    (base / 'previous-nginx.conf').write_bytes(previous)
+intent = {'target': str(target), 'planned_sha256': hashlib.sha256(planned).hexdigest(), 'previous_exists': previous is not None, 'previous_sha256': hashlib.sha256(previous).hexdigest() if previous is not None else None}
+intent_path = base / 'publish-intent.json'
+temporary = base / 'publish-intent.json.tmp'
+temporary.write_text(json.dumps(intent) + '\n')
+temporary.chmod(0o600)
+temporary.replace(intent_path)
 try:
-    target.write_bytes((base / 'nginx.conf').read_bytes())
+    target.write_bytes(planned)
     target.chmod(0o644)
     subprocess.run(['nginx', '-t'], check=True)
     subprocess.run(['systemctl', 'reload', 'nginx.service'], check=True)

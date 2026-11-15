@@ -1,0 +1,15 @@
+[Unit]
+Description=CN25 CloudCLI isolated reviewed deployment supervisor
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/srv/review/cloudcli
+UMask=0077
+ExecStart=/usr/bin/python3 /srv/review/cloudcli/source/deploy/cn25/deploy.py
+Restart=no
+RemainAfterExit=yes
+StandardOutput=append:/srv/review/controller/cloudcli-first-20261115/deployment.log
+StandardError=append:/srv/review/controller/cloudcli-first-20261115/deployment.log
