@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.37.8-rev.1 — 2026-11-15
+
+- Establish Cloud Cli rev as an independently maintained derivative.
+- Preserve the upstream license, notices, Git history and accepted CN25 BF integration.
+- Rename package/project metadata and document source-based maintenance.
+- Archive inherited publishing and notification workflows; disable npm publishing.
+
+Earlier entries below describe the original CloudCLI UI upstream.
+
+
 All notable changes to CloudCLI UI will be documented in this file.
 
 

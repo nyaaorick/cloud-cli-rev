@@ -1,12 +1,13 @@
 {
-  "name": "@cloudcli-ai/cloudcli",
-  "version": "1.37.8",
-  "productName": "CloudCLI",
-  "description": "A web-based UI for Claude Code CLI",
+  "name": "cloud-cli-rev",
+  "version": "1.37.8-rev.1",
+  "productName": "Cloud Cli rev",
+  "description": "An independently maintained AGPL derivative of CloudCLI UI, with CN25 BF manager integration.",
   "type": "module",
   "main": "dist-server/server/index.js",
   "bin": {
-    "cloudcli": "dist-server/server/modules/cli/cli.js"
+    "cloudcli": "dist-server/server/modules/cli/cli.js",
+    "cloud-cli-rev": "dist-server/server/modules/cli/cli.js"
   },
   "files": [
     "electron/",
@@ -18,13 +19,13 @@
     "scripts/",
     "README.md"
   ],
-  "homepage": "https://cloudcli.ai",
+  "homepage": "https://github.com/nyaaorick/cloud-cli-rev",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/siteboon/claudecodeui.git"
+    "url": "git+https://github.com/nyaaorick/cloud-cli-rev.git"
   },
   "bugs": {
-    "url": "https://github.com/siteboon/claudecodeui/issues"
+    "url": "https://github.com/nyaaorick/cloud-cli-rev/issues"
   },
   "scripts": {
     "dev": "concurrently --kill-others \"npm run server:dev\" \"npm run client\"",
@@ -63,9 +64,9 @@
   },
   "build": {
     "appId": "ai.cloudcli.desktop",
-    "productName": "CloudCLI",
+    "productName": "Cloud Cli rev",
     "asar": false,
-    "artifactName": "cloudcli-desktop-${version}-${os}-${arch}.${ext}",
+    "artifactName": "cloud-cli-rev-desktop-${version}-${os}-${arch}.${ext}",
     "directories": {
       "output": "release/desktop"
     },
@@ -98,8 +99,8 @@
         "dmg"
       ],
       "extendInfo": {
-        "CFBundleName": "CloudCLI",
-        "CFBundleDisplayName": "CloudCLI",
+        "CFBundleName": "Cloud Cli rev",
+        "CFBundleDisplayName": "Cloud Cli rev",
         "CFBundleURLTypes": [
           {
             "CFBundleURLName": "CloudCLI",
@@ -257,5 +258,6 @@
   "optionalDependencies": {
     "@nut-tree-fork/nut-js": "^4.2.6",
     "screenshot-desktop": "^1.15.4"
-  }
+  },
+  "private": true
 }
