@@ -20,7 +20,8 @@ await fs.rm(stage, { recursive: true, force: true });
 await fs.mkdir(stage);
 for (const name of ['dist', 'dist-server', 'shared', 'scripts', 'deploy', 'public', 'package.json',
   'package-lock.json', 'LICENSE', 'NOTICE', 'README.md', 'README.upstream.md']) {
-  await fs.cp(path.join(root, name), path.join(stage, name), { recursive: true });
+  await fs.cp(path.join(root, name), path.join(stage, name), { recursive: true,
+    filter: source => path.basename(source) !== '__pycache__' && !source.endsWith('.pyc') });
 }
 // Runtime installs need native dependency scripts, but have neither Git hooks nor dev tools.
 const runtimePackage = { ...pkg, scripts: { ...pkg.scripts } };

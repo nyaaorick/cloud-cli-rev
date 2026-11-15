@@ -533,19 +533,26 @@ test('a hanging receiver never blocks the caller: notify returns at once, attemp
 
 test('the orchestrator hands a slow delivery off without waiting for it', async () => {
   await withDatabase(async (userId) => {
+    let received!: () => void;
+    const arrival = new Promise<void>((resolve) => { received = resolve; });
+    let reply: (() => void) | undefined;
     const receiver = await startReceiver((_req, res) => {
-      setTimeout(() => res.end('ok'), 300);
+      reply = () => { res.end('ok'); };
+      received();
     });
     try {
       webhookNotificationsService.saveConfig(userId, { url: receiver.url, allowHttp: true });
-      const startedAt = performance.now();
-      notifyRunStopped({ userId, provider: 'claude', sessionId: 'slow-1', stopReason: 'completed' });
-      assert.ok(performance.now() - startedAt < 50, 'notifyRunStopped must return before the receiver answers');
-
+      // Hold the actual response until after the caller has returned. A wall-clock
+      // threshold here measured synchronous database fsync latency under load.
+      assert.equal(notifyRunStopped({ userId, provider: 'claude', sessionId: 'slow-1', stopReason: 'completed' }), undefined);
+      await arrival;
+      assert.equal(webhookNotificationsService.getConfig(userId).lastDelivery, null);
+      reply!();
       await webhookNotificationsService.waitForIdle();
-      assert.ok(performance.now() - startedAt >= 300);
       assert.equal(webhookNotificationsService.getConfig(userId).lastDelivery?.ok, true);
     } finally {
+      reply?.();
+      await webhookNotificationsService.waitForIdle();
       await receiver.close();
     }
   });
