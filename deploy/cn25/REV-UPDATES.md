@@ -1,72 +1,63 @@
-# Cloud Cli rev GitHub releases and managed updates
+# Cloud Cli rev GitHub releases and fixed-service updates
 
-The only update channel is `nyaaorick/cloud-cli-rev` on GitHub. Neither the
-browser nor `cloud-cli-rev update` installs the original CloudCLI npm package.
-The Rev maintenance channel uses `MAJOR.MINOR.PATCH-rev.N` package versions,
-matching `vMAJOR.MINOR.PATCH-rev.N` Git tags, and GitHub Releases marked **latest**
-and **not prerelease**. The suffix identifies this fork's maintenance series;
-SemVer precedence still applies, including numeric identifiers and build data.
-A tag alone does not appear in GitHub's latest-release API.
+The only update source is https://github.com/nyaaorick/cloud-cli-rev/releases.
+The browser, authenticated API and CLI use the same complete SemVer comparison.
+A Git tag alone is not a release. Neither update path installs upstream npm packages.
 
-After tests, typecheck, lint and a build, commit the version and lockfile changes,
-tag that exact commit, and push the commit and tag. `Rev GitHub Release` builds
-the immutable tag and publishes the application archive, `release-manifest.json`
-and `SHA256SUMS`. `npm run release:bundle` builds those same files locally;
-`npm run release` publishes an already tested, committed and tagged bundle with
-`gh`. The publisher never reads `.env`, publishes to npm or sends notifications.
-Run local tests without inheriting service-specific provider paths; the GitHub runner provides a clean test environment. Backend test concurrency is bounded to avoid timer starvation. Use one publisher for a tag; it refuses to overwrite an existing release.
+Commit tested source and the version/lockfile, tag that commit as
+`vMAJOR.MINOR.PATCH-rev.N`, then push it. The GitHub workflow runs backend/frontend
+checks, Python deployment tests, types, lint and build before publishing the app
+archive, `release-manifest.json` and `SHA256SUMS` as the latest release.
+`npm run release:bundle` and `npm run release` perform the same packaging and
+publication locally. Publication refuses a dirty source tree, mismatched tag,
+commit or an existing release. Use a single publisher. Credentials and `.env`
+files are never included or read by these scripts.
 
-The archive contains built browser/server files, runtime source, deploy helpers,
-the license and a dependency lockfile. It excludes authentication state, homes,
-databases and node_modules. Install production dependencies with Node22 on the
-target host, or reuse an immutable dependency tree only when the complete lock
-fingerprint matches. Native modules must match the target Node ABI. Manifest
-checksums verify downloaded bytes; GitHub HTTPS and repository permissions are
-the trust boundary. Source for AGPL compliance is linked by immutable commit.
+The archive retains AGPL LICENSE/NOTICE and an immutable source URL. It excludes
+homes, databases, authentication state and node_modules. Its runtime package
+omits development/Git lifecycle hooks; native dependency install scripts and
+the node-pty runtime fix remain enabled. Install with Node22 and
+`npm ci --omit=dev`, or reuse an existing Node22 dependency tree only after the
+complete lock fingerprint matches. HTTPS and GitHub repository permissions are
+the trust boundary; checksums detect corruption, not a compromised publisher.
 
-CN25 uses a root-owned deployment controller, independent of every running
-console and manager CLI:
+CN25 uses one external Python3.9 script, run by the root oneshot
+`cn25-cloudcli-rev-update.service`, outside the console's cgroup:
 
-- Controller: `/srv/review/controller/cloudcli-rev-updates/rev-update.py`.
-- Nonsecret root0600 configuration: the same directory's `config.json`.
-- Update unit: `cn25-cloudcli-rev-update.service`; Type=oneshot, root, 30-minute
-  timeout, with the existing Node22 directory in PATH and no credential output.
-- The root-owned `.rev-install.json` in a managed release names only that fixed
-  unit. HTTP/CLI callers cannot provide a shell command, repository or unit name.
-- The browser's Update and `cloud-cli-rev update` queue that unit. An up-to-date
-  install returns success without starting it. Source checkouts and archives
-  show the GitHub release link; they cannot silently invoke an npm updater.
-- The dedicated `/usr/local/bin/cloud-cli-rev` launcher follows the atomically
-  activated `rev-current` link. App services always use immutable release paths;
-  changing this launcher never replaces a running Codex CLI or its home.
+1. Download the latest Rev release; verify repository, version/tag, archive,
+   manifest, checksums, lockfile, LICENSE/NOTICE and safe archive paths/types.
+2. Prepare a new immutable version directory and managed-install marker.
+3. Wait for running sessions, background work, protected PID birth identities
+   and **all descendants** of the existing console to clear for 30 seconds.
+   An idle Shell/CLI process also blocks the update; it is never killed just
+   to finish an update. An unknown status/auth error fails closed.
+4. Recheck idle state, change only the fixed service's ExecStart override,
+   and restart **cn25-console-rev.service**, retaining port3302, home, state,
+   existing environment-file references, shared tunnel and public8443 URL.
+5. Verify local managed-version health and the same public HTTPS URL. Atomically
+   update the active receipt and `rev-current` link. Keep the previous version.
+   On failed health, restore the exact previous override and restart that version.
 
-The controller validates repository, tag, version, manifest, SHA256, lockfile,
-archive paths and file types. It refuses downgrades, path traversal, links,
-occupied ports, an existing unrecorded deployment and unknown remote outcomes.
-After a successful activation it atomically installs the controller from that
-same verified release for the next update, after a Python syntax preflight.
-It serializes deployments, installs into a new version directory, creates a new
-app unit and a new independently leased SSH forward, then checks public HTTPS
-on2053 before switching only the primary8443 Nginx upstream with validation and
-graceful reload. Existing app/CLI/home units and their SSH forwards remain alive.
-The original pair13301/13302 is never restarted or reclaimed by this controller.
+No per-version app units, extra ports, new tunnels or Nginx changes are created.
+The idle checks are conservative polling; they do not reserve an atomic
+application admission lock. Run the switch during a quiet window. Any shell or
+CLI that remains open postpones it, including the manager requesting the update.
+The update API reports **queued**, never falsely reports an installed version.
+An update may remain waiting until that CLI exits after its final answer.
 
-Configuration includes repository, releases directory, absolute node/npmCLI
-paths, the existing app unit used as a template, existing SSH configuration path,
-hostname, and an `initial` object with version/release/port/forward_port and the
-exact current primary Nginx SHA256. Later updates use root0600 `active.json`.
-Private SSH config is consumed only by SSH itself; the controller never reads it.
-The existing app EnvironmentFile reference is retained without reading its file.
+The root-owned controller and nonsecret `config.json` live under
+`/srv/review/controller/cloudcli-rev-updates/`. Configuration names the canonical
+repository, absolute Node/npm paths, releases directory, fixed service/port,
+public URL, owner credential **path**, initial version/release, optional protected
+`{pid,start}` identities and wait/quiet limits. Owner authentication is used only
+against loopback; password/token values remain in memory and never enter argv,
+logs or receipts. Unit timeout must exceed the idle wait plus installation time.
+The app/CLI can queue only the fixed update unit named by its root-owned marker.
+Unmanaged source/archive installs show the GitHub release link instead.
 
-Every deployment stores durable intent and remote systemd receipts by tag.
-If transport is lost during a remote mutation, inspect those exact receipts and
-Nginx hashes before taking another action. Do not delete an attempt directory
-to force a retry. Older app instances are intentionally retained for live turns;
-retirement is separate authorized work. No worker, queue, history or credential
-file belongs to the update or rollback set.
-
-Rollback changes only the primary Nginx upstream to the prior preserved instance,
-after comparing the current hash with the deployment receipt and checking the
-old app/forward. Use another independent systemd unit, retain a config backup,
-run `nginx -t` and reload gracefully. Preserve the failed release, logs, remote
-receipt, credentials and state; never restore a database snapshot over live work.
+Each tag attempt retains `deployment.json`, the verified manifest and archive.
+`active.json`, `previous.json` and `last-result.json` record activation/rollback.
+Do not delete an attempt to force a retry or replay an unknown result. Inspect
+its exact service override and health first. The updater never replaces itself
+from downloaded code; controller changes are installed separately for review.
+No worker, queue, history, database or credential file is in the rollback set.

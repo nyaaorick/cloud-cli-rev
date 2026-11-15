@@ -5,6 +5,7 @@ from pathlib import Path
 import tarfile
 import tempfile
 import unittest
+from unittest.mock import patch
 
 SPEC = importlib.util.spec_from_file_location('rev_update', Path(__file__).resolve().parents[1] / 'rev-update.py')
 MODULE = importlib.util.module_from_spec(SPEC)
@@ -58,3 +59,65 @@ class ArchiveBoundaryTests(unittest.TestCase):
             original['packages']['node_modules/dep']['integrity'] = 'hash2'
             second.write_text(json.dumps(original))
             self.assertNotEqual(MODULE.dependency_fingerprint(first), MODULE.dependency_fingerprint(second))
+
+
+class IdleGateTests(unittest.TestCase):
+    def test_protects_live_pid_birth_identity_and_all_console_children(self):
+        config = {'service': 'cn25-console-rev.service', 'protectedProcesses': [{'pid': 42, 'start': '100'}]}
+        with patch.object(MODULE, 'run', return_value=b'20\n'), \
+                patch.object(MODULE, 'process_identity', return_value={'pid': 42, 'start': '100'}), \
+                patch.object(MODULE, 'descendants', return_value={42, 43}):
+            status = MODULE.idle_snapshot(config, lambda _: {'data': {'sessions': [{}]}})
+        self.assertEqual(status, dict(main_pid=20, running_sessions=1, child_processes=2, protected_processes=1))
+
+    def test_active_turn_never_restarts_or_changes_release(self):
+        config = {'idleWaitSeconds': 1}
+        with patch.object(MODULE, 'idle_snapshot', return_value={
+                'main_pid': 20, 'running_sessions': 1, 'child_processes': 0, 'protected_processes': 0}), \
+                patch.object(MODULE.time, 'monotonic', side_effect=[0, 0, 2]), \
+                patch.object(MODULE.time, 'sleep'), patch.object(MODULE, 'run') as run:
+            with self.assertRaises(TimeoutError):
+                MODULE.wait_idle(config, lambda _: None, None)
+            run.assert_not_called()
+
+    def test_requires_a_continuous_quiet_window(self):
+        empty = dict(main_pid=20, running_sessions=0, child_processes=0, protected_processes=0)
+        with patch.object(MODULE, 'idle_snapshot', return_value=empty), \
+                patch.object(MODULE.time, 'monotonic', side_effect=[0, 1, 1, 1, 10, 10, 40, 40]), \
+                patch.object(MODULE.time, 'sleep'):
+            self.assertEqual(MODULE.wait_idle({'quietSeconds': 30}, lambda _: None, None), empty)
+
+
+class FixedServiceRollbackTests(unittest.TestCase):
+    def test_failed_new_health_restores_previous_fixed_service(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            releases = base / 'releases'
+            old, new = releases / 'old', releases / 'new'
+            old.mkdir(parents=True)
+            new.mkdir()
+            previous = {'version': '1.37.8-rev.2', 'release': str(old)}
+            state = {'version': '1.37.8-rev.4', 'commit': 'a' * 40}
+            quiet = dict(main_pid=20, running_sessions=0, child_processes=0, protected_processes=0)
+            commands = []
+            def run(args, **_kwargs):
+                commands.append(args)
+                return str(old / 'dist-server/server/index.js').encode() if 'ExecStart' in args else b''
+            def health(_port):
+                if sum('restart' in args for args in commands) < 2:
+                    raise OSError('new application unavailable')
+                return {'version': previous['version']}
+            config = dict(service='cn25-console-rev.service', port=3302, releases=str(releases), node='/node')
+            with patch.object(MODULE, 'BASE', base), patch.object(MODULE, 'SYSTEMD', base / 'systemd'), \
+                    patch.object(MODULE, 'wait_idle', return_value=quiet), \
+                    patch.object(MODULE, 'idle_snapshot', return_value=quiet), \
+                    patch.object(MODULE, 'run', side_effect=run), patch.object(MODULE, 'health', side_effect=health), \
+                    patch.object(MODULE.time, 'sleep'):
+                with self.assertRaisesRegex(RuntimeError, 'local health'):
+                    MODULE.switch_release(config, new, previous, state, lambda: None, None)
+            self.assertEqual(state['status'], 'rolled-back')
+            self.assertEqual(json.loads((base / 'active.json').read_text()), previous)
+            self.assertFalse((base / 'systemd/cn25-console-rev.service.d/80-rev-release.conf').exists())
+            self.assertEqual([args for args in commands if 'restart' in args], [
+                ['systemctl', 'restart', 'cn25-console-rev.service'],
+                ['systemctl', 'restart', 'cn25-console-rev.service']])

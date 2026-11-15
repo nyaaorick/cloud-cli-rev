@@ -34,6 +34,11 @@ def terminate_owned(owner):
 def write_record(value):
     tmp=BASE/'lease.next';tmp.write_text(json.dumps(value)+'\n');tmp.chmod(0o600);tmp.replace(BASE/'lease.json')
 
+def event(value):
+    path=BASE/'events.jsonl'
+    if path.exists() and path.stat().st_size>1024*1024:path.replace(BASE/'events.previous.jsonl')
+    with path.open('a') as out:out.write(json.dumps(dict(value,at=time.time()))+'\n')
+
 def read_record():
     p=BASE/'lease.json';return json.loads(p.read_text()) if p.exists() else None
 
@@ -90,14 +95,17 @@ def session():
     owner=identity(pid);assert owner and owner['name'].startswith('sshd')
     record={'owner':owner,'guard_pid':os.getpid(),'ports':sorted(PORTS),'heartbeat_at':time.time(),'state':'active'}
     write_record(record)
+    event(record)
     def ping():record['heartbeat_at']=time.time();write_record(record)
-    def expired(reason):record['state']=reason;write_record(record)
+    def expired(reason):record['state']=reason;record['close_reason']=reason;write_record(record)
     def stopped(_signal,_frame):raise InterruptedError('Guard stopped')
     signal.signal(signal.SIGTERM,stopped);signal.signal(signal.SIGINT,stopped)
     print(json.dumps({'ready':True,'owner_pid':pid,'lease_seconds':LEASE_SECONDS}),flush=True)
     try:serve(sys.stdin.fileno(),sys.stdout,ping,expired)
+    except BaseException as error:
+        record['close_reason']=type(error).__name__;raise
     finally:
-        record['state']='closing';write_record(record)
+        record['state']='closing';write_record(record);event(record)
         # Exact start time and the dedicated pair of listening ports are
         # checked again; never kill the sshd listener or another connection.
         terminate_owned(owner)

@@ -23,10 +23,10 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Isolate Git-discovery test fixtures from unrelated parent repositories
-        run: mkdir -p '${{ runner.temp }}/rev-tests'
+        run: mkdir -p '/var/tmp/cloud-cli-rev-${{ github.run_id }}'
       - run: npm test
         env:
-          TMPDIR: ${{ runner.temp }}/rev-tests
+          TMPDIR: /var/tmp/cloud-cli-rev-${{ github.run_id }}
       - run: npm run test:client
       - run: npm run typecheck
       - run: python3 -m unittest discover -s deploy/cn25/tests -p 'test_*.py'

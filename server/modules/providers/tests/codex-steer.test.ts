@@ -76,6 +76,12 @@ rl.on('line', line => {
     } else if (mode === 'timeout') {
       t.mock.timers.enable({ apis: ['setTimeout'] });
       const result = thread.steer('unknown after timeout', messageId);
+      // Let the real child receive the request before advancing only the parent's clock.
+      const deadline = Date.now() + 5000;
+      while (!(await readFile(log, 'utf8')).includes('"method":"turn/steer"')) {
+        assert.ok(Date.now() < deadline, 'fake app-server did not receive turn/steer');
+        await new Promise<void>((resolve) => setImmediate(resolve));
+      }
       t.mock.timers.tick(30001);
       await assert.rejects(result, /delivery is unknown/i);
       controller.abort();

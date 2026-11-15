@@ -22,6 +22,11 @@ for (const name of ['dist', 'dist-server', 'shared', 'scripts', 'deploy', 'publi
   'package-lock.json', 'LICENSE', 'NOTICE', 'README.md', 'README.upstream.md']) {
   await fs.cp(path.join(root, name), path.join(stage, name), { recursive: true });
 }
+// Runtime installs need native dependency scripts, but have neither Git hooks nor dev tools.
+const runtimePackage = { ...pkg, scripts: { ...pkg.scripts } };
+delete runtimePackage.scripts.prepare;
+delete runtimePackage.scripts.prepublishOnly;
+await fs.writeFile(path.join(stage, 'package.json'), JSON.stringify(runtimePackage, null, 2) + '\n');
 const archive = `cloud-cli-rev-v${pkg.version}-app.tar.gz`;
 execFileSync('tar', ['-czf', path.join(out, archive), '-C', stage, '.']);
 const bytes = await fs.readFile(path.join(out, archive));
