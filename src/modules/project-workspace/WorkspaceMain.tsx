@@ -242,7 +242,7 @@ function WorkspaceMain({
         />
       </div>
       <WorkbenchTerminalPanel>
-        <StandaloneShell project={selectedProject} session={selectedSession} showHeader={false} isActive={terminalOpen} />
+        <StandaloneShell project={selectedProject} session={selectedSession} showHeader={false} isActive={terminalOpen} autoConnect={terminalOpen} />
       </WorkbenchTerminalPanel>
     </div>
   );

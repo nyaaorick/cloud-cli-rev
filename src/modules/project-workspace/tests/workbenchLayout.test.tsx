@@ -54,3 +54,14 @@ test('typing, alternate shortcuts and an already handled key do not toggle the p
   document.dispatchEvent(handled);
   expect(screen.getByRole('button').getAttribute('aria-pressed')).toBe('false');
 });
+
+test('Ctrl+J reaches the workbench before a terminal can consume it as input', () => {
+  const terminalInput = vi.fn();
+  render(<WorkbenchLayoutProvider><Controls /><textarea aria-label="Terminal keyboard" onKeyDown={(event) => {
+    event.stopPropagation();
+    terminalInput(event.key);
+  }} /></WorkbenchLayoutProvider>);
+  fireEvent.keyDown(screen.getByLabelText('Terminal keyboard'), { key: 'j', ctrlKey: true });
+  expect(screen.getByRole('button').getAttribute('aria-pressed')).toBe('true');
+  expect(terminalInput).not.toHaveBeenCalled();
+});

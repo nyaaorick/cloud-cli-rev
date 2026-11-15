@@ -21,11 +21,13 @@ export function WorkbenchLayoutProvider({ children }: { children: ReactNode }) {
       if (event.defaultPrevented || event.isComposing || event.altKey || event.repeat) return;
       if ((event.metaKey || event.ctrlKey) && !event.shiftKey && event.key.toLowerCase() === 'j') {
         event.preventDefault();
+        event.stopPropagation();
         setTerminalOpen((open) => !open);
       }
     };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    // Handle this workbench shortcut before xterm converts Ctrl+J into CLI input.
+    document.addEventListener('keydown', handleKeyDown, true);
+    return () => document.removeEventListener('keydown', handleKeyDown, true);
   }, []);
   const value = useMemo(() => ({ terminalOpen, setTerminalOpen, commandsOpen, setCommandsOpen }), [terminalOpen, commandsOpen]);
   return <WorkbenchLayoutContext.Provider value={value}>{children}</WorkbenchLayoutContext.Provider>;

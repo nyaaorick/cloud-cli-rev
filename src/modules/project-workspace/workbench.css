@@ -13,12 +13,13 @@
 .workbench-icon-button { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 24px; height: 24px; border-radius: 3px; color: hsl(var(--muted-foreground)); }
 .workbench-icon-button:hover { color: hsl(var(--foreground)); background: var(--workbench-hover); }
 .workbench-activitybar { display: flex; width: 48px; flex: 0 0 48px; flex-direction: column; border-right: 1px solid var(--workbench-border); background: var(--workbench-chrome); }
-.workbench-activity-navigation { display: flex; flex-direction: column; }
+.workbench-activity-navigation { display: flex; min-height: 0; flex: 1; flex-direction: column; overflow-x: hidden; overflow-y: auto; scrollbar-width: none; }
+.workbench-activity-navigation > * { flex-shrink: 0; }
 .workbench-activity-button { position: relative; display: flex; align-items: center; justify-content: center; width: 47px; height: 48px; border-left: 2px solid transparent; color: var(--workbench-inactive); }
 .workbench-activity-button:hover { color: hsl(var(--foreground)); }
 .workbench-activity-button[aria-pressed='true'] { border-left-color: hsl(var(--primary)); color: hsl(var(--foreground)); }
 .workbench-activity-button:disabled { opacity: .4; }
-.workbench-activitybar-bottom { margin-top: auto; }
+.workbench-activitybar-bottom { margin-top: auto; flex-shrink: 0; }
 .workbench-editor-header { flex-shrink: 0; min-width: 0; border-bottom: 1px solid var(--workbench-border); background: var(--workbench-chrome); }
 .workbench-document-tab { display: flex; align-items: center; min-width: 150px; max-width: min(70%, 500px); height: 35px; padding: 0 14px; border-top: 1px solid hsl(var(--primary)); border-right: 1px solid var(--workbench-border); background: var(--workbench-editor); }
 .workbench-document-tab h2 { font-size: 13px; font-weight: 400; }
