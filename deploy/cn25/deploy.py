@@ -18,6 +18,7 @@ SOURCE = Path('/srv/review/cloudcli/source')
 ROOT = SOURCE.parent
 SSH = ['/usr/bin/ssh', '-F', '/srv/review/secrets/manager-access/ssh_config', '-o', 'ConnectTimeout=15', '-o', 'ServerAliveInterval=15', '-o', 'ServerAliveCountMax=3', 'console-vps']
 URL = 'https://cn25.foliodude.it.com:8443'
+GIT = ['git', '-c', 'safe.directory=' + str(SOURCE), '-C', str(SOURCE)]
 
 
 def run(args, **kwargs):
@@ -54,8 +55,8 @@ def http(path, body=None, token=None, method=None):
 def main():
     os.umask(0o077)
     ops = SOURCE / 'deploy/cn25'
-    sha = subprocess.check_output(['git', '-C', str(SOURCE), 'rev-parse', 'HEAD'], text=True).strip()
-    assert not subprocess.check_output(['git', '-C', str(SOURCE), 'status', '--porcelain', '--untracked-files=no']), 'Tracked source must be clean'
+    sha = subprocess.check_output(GIT + ['rev-parse', 'HEAD'], text=True).strip()
+    assert not subprocess.check_output(GIT + ['status', '--porcelain', '--untracked-files=no']), 'Tracked source must be clean'
     approval = json.loads((BASE / 'review-approved.json').read_text())
     assert approval['sha'] == sha and approval['approved'] is True, 'Independent final SHA review is required'
     tests = json.loads((BASE / 'tests-approved.json').read_text())
@@ -71,7 +72,7 @@ def main():
     release.parent.mkdir(mode=0o755, exist_ok=True)
     release.parent.chmod(0o755)
     release.mkdir(mode=0o755)
-    archive = subprocess.Popen(['git', '-C', str(SOURCE), 'archive', sha], stdout=subprocess.PIPE)
+    archive = subprocess.Popen(GIT + ['archive', sha], stdout=subprocess.PIPE)
     run(['tar', '-x', '-C', str(release)], stdin=archive.stdout)
     archive.stdout.close()
     assert archive.wait() == 0
