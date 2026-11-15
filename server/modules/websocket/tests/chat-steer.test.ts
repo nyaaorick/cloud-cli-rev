@@ -33,7 +33,7 @@ type SteerCall = { provider: string; sessionId: string; command: string; options
  * `running` decides whether the session has a chat run in progress.
  */
 async function withGateway(
-  { accepts, running }: { accepts: boolean; running: boolean },
+  { accepts, running, provider = 'claude', fails = false }: { accepts: boolean; running: boolean; provider?: 'codex' | 'claude'; fails?: boolean },
   runTest: (context: { socket: ReturnType<typeof createFakeSocket>; steers: SteerCall[] }) => Promise<void>,
 ): Promise<void> {
   const previousDatabasePath = process.env.DATABASE_PATH;
@@ -47,11 +47,11 @@ async function withGateway(
   const socket = createFakeSocket();
 
   try {
-    sessionsDb.createAppSession(SESSION_ID, 'claude', tempDirectory);
+    sessionsDb.createAppSession(SESSION_ID, provider, tempDirectory);
     if (running) {
       chatRunRegistry.startRun({
         appSessionId: SESSION_ID,
-        provider: 'claude',
+        provider,
         providerSessionId: null,
         connection: null,
         userId: 1,
@@ -66,6 +66,7 @@ async function withGateway(
           hasRuntime: () => true,
           steer: async (provider: string, sessionId: string, command: string, options: AnyRecord) => {
             steers.push({ provider, sessionId, command, options });
+            if (fails) throw new Error("connection lost after write");
             return accepts;
           },
         } as never,
@@ -155,5 +156,25 @@ test('an empty steer is refused before it reaches the runtime', async () => {
 
     assert.equal(steers.length, 0);
     assert.equal(socket.frames.at(-1)?.code, 'MESSAGE_REQUIRED');
+  });
+});
+
+
+test('Codex steers through its own runtime, regardless of a client provider hint', async () => {
+  await withGateway({ accepts: true, running: true, provider: 'codex' }, async ({ socket, steers }) => {
+    socket.emit('message', JSON.stringify({ type: 'chat.steer', provider: 'claude', sessionId: SESSION_ID, messageId: MESSAGE_ID, content: 'new direction' }));
+    await settle();
+    assert.equal(steers[0].provider, 'codex');
+    assert.equal(socket.frames.at(-1)?.kind, 'chat_steer_accepted');
+  });
+});
+
+test('a lost steer reply preserves the message id and never reports a safe refusal', async () => {
+  await withGateway({ accepts: true, running: true, provider: 'codex', fails: true }, async ({ socket }) => {
+    socket.emit('message', JSON.stringify({ type: 'chat.steer', sessionId: SESSION_ID, messageId: MESSAGE_ID, content: 'new direction' }));
+    await settle();
+    assert.equal(socket.frames.at(-1)?.code, 'STEER_DELIVERY_UNKNOWN');
+    assert.equal(socket.frames.at(-1)?.messageId, MESSAGE_ID);
+    assert.ok(!socket.frames.some((frame) => frame.code === 'STEER_UNAVAILABLE'));
   });
 });

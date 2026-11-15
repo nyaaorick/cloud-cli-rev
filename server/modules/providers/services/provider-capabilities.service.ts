@@ -118,7 +118,7 @@ const PROVIDER_CAPABILITIES: Record<LLMProvider, ProviderCapabilities> = {
     supportsMessageEditing: true,
     supportsSessionForking: true,
     supportsSideQuestions: true,
-    supportsSteering: false,
+    supportsSteering: true,
   },
   opencode: {
     provider: 'opencode',

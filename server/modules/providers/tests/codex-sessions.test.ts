@@ -588,7 +588,7 @@ test('Codex history restores user prompts from typed item_completed rows', { con
     });
     await writeFile(
       transcriptPath,
-      [JSON.stringify({ type: 'session_meta', payload: { id: providerSessionId, cwd: workspacePath } }), typedLine, wireUserEcho].join(lineEnd) + lineEnd,
+      [JSON.stringify({ type: 'session_meta', payload: { id: providerSessionId, cwd: workspacePath } }), typedLine, wireUserEcho, JSON.stringify({ type: 'event_msg', payload: { type: 'item_completed', turn_id: 'typed-turn-1', item: { type: 'UserMessage', id: 'steer-item', client_id: 'client-steer-id', content: [{ type: 'text', text: 'steer in this turn' }] } } })].join(lineEnd) + lineEnd,
       'utf8',
     );
 
@@ -601,7 +601,10 @@ test('Codex history restores user prompts from typed item_completed rows', { con
       const users = history.messages.filter((message) => message.role === 'user');
       const images = users[0]?.images as Array<{ path?: string; data?: string }> | undefined;
 
-      assert.equal(users.length, 1, 'the wire user echo must not duplicate the typed prompt');
+      assert.equal(users.length, 2, 'the wire echo must not duplicate either user prompt');
+      assert.equal(users[1]?.id, 'client-steer-id');
+      assert.equal(users[1]?.content, 'steer in this turn');
+      assert.equal(users[1]?.transcriptAnchorId, undefined, 'same-turn steer cannot be independently truncated');
       assert.equal(users[0]?.content, prompt);
       assert.equal(images?.[0]?.path, '/tmp/prompt-picture.png');
     });

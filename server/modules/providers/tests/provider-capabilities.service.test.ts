@@ -51,3 +51,7 @@ test('side questions are supported by claude, codex and opencode, not by cursor'
     assert.equal(capabilities.supportsSideQuestions, supported, `${provider}: supportsSideQuestions`);
   }
 });
+
+test('Codex exposes native same-turn steering', () => {
+  assert.equal(providerCapabilitiesService.getProviderCapabilities('codex').supportsSteering, true);
+});

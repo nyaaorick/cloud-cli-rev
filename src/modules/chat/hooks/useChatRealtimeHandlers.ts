@@ -190,6 +190,10 @@ export function useChatRealtimeHandlers({
           // A message sent into a turn that had already ended. The run is not
           // failing — it finished — so nothing is shown or idled here; the
           // composer sends the message as the next turn instead.
+          if (sid && msg.code === 'STEER_DELIVERY_UNKNOWN' && typeof msg.messageId === 'string') {
+            onSteerOutcome?.(sid, msg.messageId, 'unknown');
+            return;
+          }
           if (sid && msg.code === 'STEER_UNAVAILABLE' && typeof msg.messageId === 'string') {
             onSteerOutcome?.(sid, msg.messageId, 'refused');
             return;

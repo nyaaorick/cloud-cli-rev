@@ -21,12 +21,11 @@ import {
  * primitive, `thread/fork`, which is what the Codex IDE clients build their
  * own "fork" and "edit an earlier message" on top of.
  *
- * So this is a second transport to the same CLI, opened only for the
- * operations the SDK cannot express. Everything else still goes through the
- * SDK.
+ * Main turns also use this transport so turn/steer reaches the process that
+ * owns the active turn. Forks and side questions keep separate connections.
  */
 
-/** How long a single request may take before the child is killed. */
+/** How long to wait for a single JSON-RPC reply. */
 const REQUEST_TIMEOUT_MS = 30_000;
 
 /**
@@ -104,13 +103,8 @@ async function withAppServer<T>(
     stdio: ['pipe', 'pipe', 'pipe'],
   });
 
-  // The server logs sandbox and skill warnings to stderr on every start. They
-  // are not failures and drowning the app log in them helps nobody, so stderr
-  // is only kept around to explain a spawn that dies.
-  let stderr = '';
-  child.stderr?.on('data', (chunk) => {
-    stderr = (stderr + String(chunk)).slice(-2000);
-  });
+  // Drain CLI diagnostics without exposing provider details in application logs.
+  child.stderr?.resume();
 
   let nextRequestId = 1;
   const pending = new Map<number, (response: JsonRpcResponse) => void>();
@@ -154,7 +148,7 @@ async function withAppServer<T>(
         child.stdin?.write(`${JSON.stringify({
           jsonrpc: '2.0',
           id: message.id,
-          error: { code: -32601, message: 'Side questions do not support interactive requests.' },
+          error: { code: -32601, message: 'This client does not support interactive requests.' },
         })}\n`);
         return;
       }
@@ -237,6 +231,9 @@ async function withAppServer<T>(
   signal?.addEventListener('abort', killOnAbort, { once: true });
 
   try {
+    if (signal?.aborted) {
+      throw new Error('Codex operation aborted.');
+    }
     // `capabilities` is deliberately empty. `thread/fork` with `lastTurnId` is
     // in the stable protocol; only `beforeTurnId` and the turn-listing methods
     // are gated behind `experimentalApi`, and neither is needed here.
@@ -247,14 +244,6 @@ async function withAppServer<T>(
     child.stdin?.write(`${JSON.stringify({ jsonrpc: '2.0', method: 'initialized', params: {} })}\n`);
 
     return await run({ call, onNotification, onExit });
-  } catch (error) {
-    if (error instanceof AppError && exitReason) {
-      throw new AppError(`${error.message}${stderr ? ` — ${stderr.trim().split('\n').slice(-1)[0]}` : ''}`, {
-        code: error.code,
-        statusCode: error.statusCode,
-      });
-    }
-    throw error;
   } finally {
     signal?.removeEventListener('abort', killOnAbort);
     reader.close();
@@ -263,6 +252,8 @@ async function withAppServer<T>(
 }
 
 export const codexAppServer = {
+  /** Used by the main-turn client to keep steer on the owning connection. */
+  withConnection: withAppServer,
   /**
    * Resolves the `codex` launcher shipped in node_modules.
    *

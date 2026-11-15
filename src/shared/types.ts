@@ -842,7 +842,7 @@ export type PendingSteer = {
   attachments: File[];
   /** Descriptors uploaded before it was sent, reused if it has to be queued instead. */
   uploadedAttachments: unknown[];
-  status: 'sending' | 'accepted';
+  status: 'sending' | 'accepted' | 'unknown';
 };
 
 /**
@@ -851,8 +851,9 @@ export type PendingSteer = {
  * had already ended, so it should go out as the next turn) or `delivered` (the
  * agent read it; its echo is in the transcript). `delivered` is reported for
  * every live user message, so the composer matches it against its own ids.
+ * `unknown` means the reply was lost: retain it for inspection without retrying.
  */
-export type SteerOutcome = 'accepted' | 'refused' | 'delivered';
+export type SteerOutcome = 'accepted' | 'refused' | 'delivered' | 'unknown';
 
 /** The answer to the prompt shown when sending over a session's background work: send now (stopping that work), queue the message until the work finishes, ask a side question instead, or do nothing. */
 export type BackgroundSendChoice = 'send' | 'queue' | 'sideQuestion' | 'cancel';

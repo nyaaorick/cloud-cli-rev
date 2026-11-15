@@ -5,6 +5,8 @@ import path from 'node:path';
 import pty, { type IPty } from 'node-pty';
 import { WebSocket, type RawData } from 'ws';
 
+import { buildManagerCodexShellCommand } from '@/modules/providers/index.js';
+
 import { parseIncomingJsonObject, stripAnsiSequences } from '@/shared/utils.js';
 
 type ShellIncomingMessage = {
@@ -234,6 +236,8 @@ function buildShellCommand(
   }
 
   if (provider === 'codex') {
+    const managerCommand = buildManagerCodexShellCommand(resumeSessionId);
+    if (managerCommand) return otherProgram(managerCommand);
     if (resumeSessionId) {
       if (os.platform() === 'win32') {
         return otherProgram(`codex resume "${resumeSessionId}"; if ($LASTEXITCODE -ne 0) { codex }`);

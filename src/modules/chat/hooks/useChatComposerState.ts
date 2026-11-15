@@ -1055,9 +1055,9 @@ export function useChatComposerState({
       if (!steer) {
         return;
       }
-      if (outcome === 'accepted') {
+      if (outcome === 'accepted' || outcome === 'unknown') {
         updatePendingSteers((current) => current.map((candidate) => (
-          candidate.messageId === messageId ? { ...candidate, status: 'accepted' } : candidate
+          candidate.messageId === messageId ? { ...candidate, status: outcome } : candidate
         )));
         return;
       }

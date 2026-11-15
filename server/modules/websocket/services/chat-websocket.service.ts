@@ -625,13 +625,21 @@ async function handleChatSteer(
   }
 
   const run = chatRunRegistry.getRun(sessionId);
-  const steered = run?.status === 'running'
-    ? await dependencies.runtime.steer(provider, sessionId, content, {
-      images: attachments.filter(isImageAttachmentDescriptor),
-      files: attachments.filter((descriptor) => !isImageAttachmentDescriptor(descriptor)),
-      messageId,
-    })
-    : false;
+  let steered: boolean;
+  try {
+    steered = run?.status === 'running'
+      ? await dependencies.runtime.steer(provider, sessionId, content, {
+        images: attachments.filter(isImageAttachmentDescriptor),
+        files: attachments.filter((descriptor) => !isImageAttachmentDescriptor(descriptor)),
+        messageId,
+      })
+      : false;
+  } catch {
+    // The provider may have received it before the connection failed. Never
+    // report a refusal, which would automatically resend and duplicate it.
+    sendProtocolError(ws, 'STEER_DELIVERY_UNKNOWN', 'Steer delivery is unknown. Check the transcript before sending it again.', sessionId, { messageId });
+    return;
+  }
 
   if (!steered) {
     sendProtocolError(

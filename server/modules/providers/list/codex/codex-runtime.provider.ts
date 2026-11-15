@@ -1,8 +1,8 @@
 /**
- * OpenAI Codex SDK Integration
+ * OpenAI Codex app-server Integration
  * =============================
  *
- * This module provides integration with the OpenAI Codex SDK for non-interactive
+ * This module provides integration with the official Codex app-server for streamed
  * chat sessions. It mirrors the Claude runtime adapter for consistency.
  *
  * ## Usage
@@ -11,8 +11,7 @@
  * - codexRuntime.abort(sessionId) - Cancel an active session
  */
 
-import { Codex } from '@openai/codex-sdk';
-import type { ModelReasoningEffort, Thread, ThreadOptions } from '@openai/codex-sdk';
+import type { ModelReasoningEffort, ThreadOptions } from '@openai/codex-sdk';
 
 import {
   appendFilesInputTag,
@@ -29,10 +28,11 @@ import type { SideQuestionOutcome, SideQuestionRequest, SideQuestionSink } from 
 
 import { codexAppServer } from './codex-app-server.client.js';
 import { codexManagerService } from './codex-manager.service.js';
+import { codexTurnClient } from './codex-turn.client.js';
 
 type ActiveCodexSession = {
-  thread: Thread;
-  codex: Codex;
+  thread: ReturnType<typeof codexTurnClient.createThread>;
+  workingDirectory: string;
   status: 'running' | 'aborted' | 'completed';
   abortController: AbortController;
   startedAt: string;
@@ -296,8 +296,7 @@ async function queryCodex(
     ? effort as ModelReasoningEffort
     : undefined);
 
-  let codex: Codex;
-  let thread: Thread;
+  let thread: ReturnType<typeof codexTurnClient.createThread>;
   // Provider-native thread id (starts as the resume id, or is captured from
   // the stream for brand-new sessions).
   let capturedSessionId = providerSessionId;
@@ -326,8 +325,6 @@ async function queryCodex(
   const sessionKey = () => sessionId || capturedSessionId || null;
 
   try {
-    codex = new Codex(manager ? { codexPathOverride: manager.cliPath, config: manager.config } : undefined);
-
     const threadOptions: ThreadOptions = {
       workingDirectory,
       skipGitRepoCheck: true,
@@ -337,11 +334,7 @@ async function queryCodex(
       modelReasoningEffort: resolvedEffort,
     };
 
-    if (providerSessionId) {
-      thread = codex.resumeThread(providerSessionId, threadOptions);
-    } else {
-      thread = codex.startThread(threadOptions);
-    }
+    thread = codexTurnClient.createThread(providerSessionId, threadOptions);
 
     const registerSession = (id: string | null) => {
       if (!id) {
@@ -349,7 +342,7 @@ async function queryCodex(
       }
       activeCodexSessions.set(id, {
         thread,
-        codex,
+        workingDirectory,
         status: 'running',
         abortController,
         startedAt: new Date().toISOString()
@@ -383,7 +376,7 @@ async function queryCodex(
           registerSession(sessionKey());
 
           if (ws.setSessionId && typeof ws.setSessionId === 'function') {
-            ws.setSessionId(capturedSessionId);
+            ws.setSessionId(discoveredSessionId);
           }
 
           if (!providerSessionId && !sessionCreatedSent) {
@@ -414,6 +407,16 @@ async function queryCodex(
         (event.type === 'item.started' || event.type === 'item.updated')
         && !PROGRESSIVE_CODEX_ITEM_TYPES.has(event.item?.type)
       ) {
+        continue;
+      }
+
+      if (event.type === 'steer.delivered') {
+        const content = event.content.filter((item: AnyRecord) => item.type === 'text').map((item: AnyRecord) => item.text).join('\n');
+        const images = event.content.filter((item: AnyRecord) => item.type === 'localImage').map((item: AnyRecord) => ({ path: item.path }));
+        for (const message of context.normalizeMessage({
+          type: 'user', uuid: event.messageId, message: { role: 'user', content },
+          ...(images.length ? { images } : {}),
+        }, capturedSessionId || sessionId || null)) sendMessage(ws, message);
         continue;
       }
 
@@ -584,10 +587,20 @@ async function askCodexSideQuestion(
   }
 }
 
-/** Used by the providers module's CodexProvider to run and abort SDK turns. */
+/** Used by the providers module's CodexProvider to run, steer and abort native turns. */
 export const codexRuntime = {
   run: queryCodex,
   abort: abortCodexSession,
+  async steer(sessionId: string, command: string, options: AnyRecord = {}): Promise<boolean> {
+    const session = activeCodexSessions.get(sessionId);
+    if (!session || session.status !== 'running') return false;
+    const prompt = appendFilesInputTag(command, options.files);
+    const images = normalizeImageDescriptors(options.images);
+    const input = images.length > 0
+      ? buildCodexInputItems(prompt.trim() ? prompt : CODEX_IMAGE_ONLY_PROMPT, images, session.workingDirectory)
+      : prompt;
+    return session.thread.steer(input, options.messageId);
+  },
   askSideQuestion: askCodexSideQuestion,
 };
 

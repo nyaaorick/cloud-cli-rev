@@ -94,3 +94,13 @@ async function checkReady(): Promise<boolean> {
 
 /** Used by Codex runtime/auth/models/app-server to bind this console to the accepted manager profile. */
 export const codexManagerService = { getProfile, getCliConfigArgs, checkReady };
+
+/** Used by the websocket shell to launch the isolated manager without a package daemon. */
+export function buildManagerCodexShellCommand(resumeId: string): string | null {
+  const profile = getProfile();
+  if (!profile) return null;
+  const executable = `'${profile.cliPath.replace(/'/g, "'\\''")}'`;
+  // This immutable toolchain is a standalone binary, not a complete install.
+  // Resume errors must remain visible instead of silently opening a new chat.
+  return `${executable} --no-daemon${resumeId ? ` resume '${resumeId.replace(/'/g, "'\\''")}'` : ''}`;
+}

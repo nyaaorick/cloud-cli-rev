@@ -27,7 +27,9 @@ export default function SteeredMessageCard({ steer, providerLabel }: SteeredMess
           <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-primary/80">
             <span>{t('input.steer.label', { defaultValue: 'Steering' })}</span>
             <span className="normal-case text-muted-foreground/70" role="status">
-              · {steer.status === 'sending'
+              · {steer.status === 'unknown'
+                ? t('input.steer.unknown', { defaultValue: 'Delivery unknown. Check the transcript before resending.' })
+                : steer.status === 'sending'
                 ? t('input.steer.sending', { defaultValue: 'Sending…' })
                 : t('input.steer.willRead', { provider: providerLabel, defaultValue: '{{provider}} reads it at its next tool call' })}
             </span>

@@ -55,3 +55,17 @@ npm run lint
 在自己的分支提交修改，通过测试后再合入 `main`。需要同步上游时，从 `upstream` remote 拉取并在独立分支审查差异；不要覆盖 CN25 集成或直接重写已发布历史。线上升级应独立构建、验证和切换，版本仓库的发布与运行服务的部署分别执行。
 
 贡献说明见 [CONTRIBUTING.md](CONTRIBUTING.md)。提交修改时继续遵守原许可证及署名要求。
+
+### Native Codex steering (Rev 2)
+
+Codex main turns use the official CLI's stdio app-server. While a turn is
+running, open the send menu and choose **Steer** to insert text or attachments
+without stopping or starting another turn. The request uses `turn/steer` with
+the active `expectedTurnId`; only the native user-message echo confirms delivery.
+An uncertain connection result is shown explicitly and never automatically resent.
+See the [official app-server protocol](https://learn.chatgpt.com/docs/app-server).
+
+The isolated CN25 manager terminal uses its pinned CLI with `--no-daemon`:
+its two-binary toolchain has no complete package for the shared daemon. Resume
+failures remain visible and do not silently open another conversation. This does
+not change the manager CLI installation, home, model, permissions or credentials.

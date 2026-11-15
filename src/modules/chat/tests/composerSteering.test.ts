@@ -240,3 +240,17 @@ test('Steer chosen just as the turn ended sends the message as the next turn', a
   assert.equal(steerFrames(sent).length, 0);
   assert.equal(sent.filter((frame) => frame.type === 'chat.send').length, 1);
 });
+
+
+test('unknown steer delivery stays visible and never queues an automatic duplicate', async () => {
+  const { view, sent } = render();
+  await steer(view, 'delivery uncertain');
+  const messageId = String(steerFrames(sent)[0].messageId);
+  act(() => view.result.current.handleSteerOutcome('session-1', messageId, 'unknown'));
+  view.rerender({ isLoading: false, supportsSteering: true });
+  assert.equal(view.result.current.pendingSteers[0]?.status, 'unknown');
+  assert.equal(view.result.current.input, '');
+  assert.equal(queued.size, 0);
+  act(() => view.result.current.handleSteerOutcome('session-1', messageId, 'delivered'));
+  assert.deepEqual(view.result.current.pendingSteers, []);
+});

@@ -27,3 +27,5 @@ export {
   MAX_SIDE_QUESTIONS_PER_SESSION,
   sideQuestionsService,
 } from './services/side-questions.service.js';
+
+export { buildManagerCodexShellCommand } from './list/codex/codex-manager.service.js';

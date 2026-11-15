@@ -4,11 +4,11 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { Codex } from '@openai/codex-sdk';
-import type { Thread, ThreadOptions } from '@openai/codex-sdk';
+import { codexTurnClient } from '../list/codex/codex-turn.client.js';
+import type { ThreadOptions } from '@openai/codex-sdk';
 
 import { codexRuntime } from '../list/codex/codex-runtime.provider.js';
-import { codexManagerService } from '../list/codex/codex-manager.service.js';
+import { buildManagerCodexShellCommand, codexManagerService } from '../list/codex/codex-manager.service.js';
 import type { ProviderRuntimeContext } from '@/shared/index.js';
 
 for (const resumed of [false, true]) {
@@ -37,15 +37,15 @@ requires_openai_auth = false
     let captured: ThreadOptions | undefined;
     let executable: string | undefined;
     let config: Record<string, any> | undefined;
-    const thread = { id: 'native-manager', async runStreamed() { return { events: (async function* () { yield { type: 'thread.started', thread_id: 'native-manager' }; })() }; } } as unknown as Thread;
-    const intercept = function(this: any, options?: ThreadOptions) {
+    const thread = { id: 'native-manager', async runStreamed() { return { events: (async function* () { yield { type: 'thread.started', thread_id: 'native-manager' }; })() }; } } as unknown as ReturnType<typeof codexTurnClient.createThread>;
+    t.mock.method(codexTurnClient, 'createThread', (id: string | null, options: ThreadOptions) => {
+      assert.equal(id, resumed ? 'native-manager' : null);
       captured = options;
-      executable = this.exec.executablePath;
-      config = this.exec.configOverrides;
+      const profile = codexManagerService.getProfile();
+      executable = profile?.cliPath;
+      config = profile?.config;
       return thread;
-    };
-    t.mock.method(Codex.prototype, 'startThread', intercept);
-    t.mock.method(Codex.prototype, 'resumeThread', function(this: any, _id: string, options?: ThreadOptions) { return intercept.call(this, options); });
+    });
     const context: ProviderRuntimeContext = {
       resolveProviderSessionId: () => resumed ? 'native-manager' : null,
       resolveResumeModel: async () => 'worker-model',
@@ -55,6 +55,7 @@ requires_openai_auth = false
     };
     await codexRuntime.run('identify', { sessionId: resumed ? 'app-manager' : undefined, cwd: home, model: 'worker-model', effort: 'low', permissionMode: 'default' }, { isWebSocketWriter: true, send() {} }, context);
     assert.equal(executable, '/fixed/native/codex');
+    assert.equal(buildManagerCodexShellCommand(resumed ? 'native-manager' : ''), resumed ? "'/fixed/native/codex' --no-daemon resume 'native-manager'" : "'/fixed/native/codex' --no-daemon");
     assert.equal(captured?.model, 'gpt-6.1-sol');
     assert.equal(captured?.modelReasoningEffort, 'xhigh');
     assert.equal(captured?.sandboxMode, 'danger-full-access');

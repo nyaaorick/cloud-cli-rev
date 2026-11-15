@@ -1453,6 +1453,8 @@ async function getCodexSessionMessages(sessionId: string): Promise<CodexHistoryR
             }
             const row: AnyRecord = {
               type: 'user',
+              // Native steer client ids join the live echo to refreshed history.
+              uuid: readNonEmptyString(item.client_id),
               timestamp,
               message: { role: 'user', content },
               ...(images ? { images } : {}),
