@@ -1,2 +1,2 @@
 // createSystemModule: used by the server entrypoint to mount protected system update routes.
-export { createSystemModule } from './system.module.js';
+export { createSystemModule, createRevUpdateService } from './system.module.js';

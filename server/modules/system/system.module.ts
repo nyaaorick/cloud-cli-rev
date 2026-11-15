@@ -1,62 +1,45 @@
-import os from 'node:os';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 
-import spawn from 'cross-spawn';
 import type { Router } from 'express';
+
+import { getRevInstallation, revReleases } from '@/shared/index.js';
 
 import { createSystemRouter } from './system.routes.js';
 import { createSystemUpdateService } from './system.service.js';
 
-type SystemModuleOptions = {
-  appRoot: string;
-  installMode: 'git' | 'npm';
-  isPlatform: boolean;
-};
+type SystemModuleOptions = { appRoot: string; version: string };
 
-function runShellCommand(
-  command: string,
-  workingDirectory: string,
-  environment: NodeJS.ProcessEnv,
-  onOutput: (output: string) => void,
-  onErrorOutput: (errorOutput: string) => void,
-): Promise<{ exitCode: number | null; output: string; errorOutput: string }> {
-  return new Promise((resolve, reject) => {
-    const childProcess = spawn('sh', ['-c', command], {
-      cwd: workingDirectory,
-      env: environment,
-    });
-    let output = '';
-    let errorOutput = '';
-
-    childProcess.stdout?.on('data', (data: Buffer) => {
-      const text = data.toString();
-      output += text;
-      onOutput(text);
-    });
-    childProcess.stderr?.on('data', (data: Buffer) => {
-      const text = data.toString();
-      errorOutput += text;
-      onErrorOutput(text);
-    });
-    childProcess.once('error', reject);
-    childProcess.once('close', (exitCode) => {
-      resolve({ exitCode, output, errorOutput });
-    });
+/** Used by the CLI and HTTP module; updates run only through the fixed independent deployment unit. */
+export function createRevUpdateService(options: SystemModuleOptions) {
+  const installation = getRevInstallation(options.appRoot);
+  let cached: Awaited<ReturnType<typeof revReleases.fetchLatest>> = null;
+  let expires = 0;
+  let lookup: ReturnType<typeof revReleases.fetchLatest> | null = null;
+  const fetchLatestRelease = async () => {
+    if (Date.now() < expires) return cached;
+    if (!lookup) lookup = revReleases.fetchLatest();
+    try {
+      cached = await lookup;
+      expires = Date.now() + (cached ? 300000 : 30000);
+      return cached;
+    } finally { lookup = null; }
+  };
+  return createSystemUpdateService({
+    version: options.version,
+    installMode: installation.mode,
+    fetchLatestRelease,
+    requestManagedUpdate: async () => {
+      if (!installation.updateService) throw new Error('Managed Rev update service is not configured');
+      try {
+        await promisify(execFile)('/usr/bin/sudo', ['-n', '/usr/bin/systemctl', 'start', '--no-block', installation.updateService],
+          { timeout: 15000, maxBuffer: 4096 });
+      } catch { throw new Error('The independent Rev deployment service could not be started'); }
+    },
   });
 }
 
-/**
- * Builds the authenticated system router for the server entrypoint using the
- * installation details it already resolves for health and startup metadata.
- */
+/** Used by server bootstrap to mount authenticated version and update routes. */
 export function createSystemModule(options: SystemModuleOptions): Router {
-  const systemUpdateService = createSystemUpdateService({
-    ...options,
-    homeDirectory: os.homedir(),
-    environment: process.env,
-    runShellCommand,
-    logInfo: (message, detail) => console.log(message, detail ?? ''),
-    logError: (message, detail) => console.error(message, detail ?? ''),
-  });
-
-  return createSystemRouter(systemUpdateService);
+  return createSystemRouter(createRevUpdateService(options));
 }

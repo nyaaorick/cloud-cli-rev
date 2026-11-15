@@ -636,6 +636,8 @@ export const api = {
   },
 
   system: {
+    release: () => authenticatedFetch('/api/system/release'),
+    health: () => fetch('/health'),
     update: () => post('/api/system/update'),
   },
 };

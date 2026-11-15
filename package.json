@@ -1,6 +1,6 @@
 {
   "name": "cloud-cli-rev",
-  "version": "1.37.8-rev.2",
+  "version": "1.37.8-rev.3",
   "productName": "Cloud Cli rev",
   "description": "An independently maintained AGPL derivative of CloudCLI UI, with CN25 BF manager integration.",
   "type": "module",
@@ -49,18 +49,18 @@
     "postbuild:server": "node scripts/promote-dist-server.mjs",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p server/tsconfig.json",
-    "test": "tsx --tsconfig server/tsconfig.json --test \"server/**/*.test.ts\" \"server/**/*.test.js\"",
+    "test": "tsx --tsconfig server/tsconfig.json --test --test-concurrency=4 \"server/**/*.test.ts\" \"server/**/*.test.js\"",
     "test:client": "vitest run",
     "lint": "oxlint src/ server/",
     "lint:server": "oxlint server/",
     "lint:client": "oxlint src/",
     "lint:fix": "oxlint src/ server/ --fix",
     "start": "npm run build && npm run server",
-    "release": "./release.sh",
+    "release": "node scripts/release/publish-rev-release.mjs",
     "prepublishOnly": "npm run build",
     "postinstall": "node scripts/fix-node-pty.js",
     "prepare": "husky",
-    "update:platform": "./update-platform.sh"
+    "release:bundle": "node scripts/release/build-rev-release.mjs"
   },
   "build": {
     "appId": "ai.cloudcli.desktop",

@@ -1,4 +1,3 @@
-#!/bin/bash
-# Load environment variables from .env
-export $(grep -v '^#' .env | grep '^GITHUB_TOKEN=' | xargs)
-exec npx release-it "$@"
+#!/bin/sh
+set -eu
+exec node "$(dirname "$0")/scripts/release/publish-rev-release.mjs" "$@"

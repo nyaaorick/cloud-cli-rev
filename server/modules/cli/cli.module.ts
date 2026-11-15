@@ -1,4 +1,4 @@
-import { execFileSync, execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -7,6 +7,7 @@ import spawn from 'cross-spawn';
 
 import type { CliApplication, CliPackageMetadata } from '@/shared/types.js';
 import { findApplicationRoot, getModuleDirectory } from '@/shared/utils.js';
+import { createRevUpdateService } from '@/modules/system/index.js';
 
 import { createCliService } from './cli.service.js';
 import { createSandboxCommandService } from './sandbox.service.js';
@@ -69,18 +70,11 @@ export function createCliApplication(): CliApplication {
     fileSystem,
     output,
     sandboxService,
-    getLatestPackageVersion: async () => {
-      // Yield first so the default `start` command can begin loading the server
-      // before this best-effort npm registry check runs.
-      await new Promise<void>((resolve) => setImmediate(resolve));
-      return execSync(
-        'npm show @cloudcli-ai/cloudcli version',
-        { encoding: 'utf8' },
-      ).trim();
+    getLatestReleaseVersion: async () => {
+      const status = await createRevUpdateService({ appRoot: applicationRoot, version: packageMetadata.version }).getReleaseStatus();
+      return status.latestVersion;
     },
-    updateGlobalPackage: () => {
-      execSync('npm update -g @cloudcli-ai/cloudcli', { stdio: 'inherit' });
-    },
+    requestReleaseUpdate: () => createRevUpdateService({ appRoot: applicationRoot, version: packageMetadata.version }).updateSystem(),
     startServer: async () => {
       // The server executable is an entrypoint rather than a feature module,
       // so it has no barrel contract to import through.

@@ -1,76 +1,44 @@
-type SystemUpdateCommandResult = {
-  exitCode: number | null;
-  output: string;
-  errorOutput: string;
-};
+import { revReleases } from '@/shared/index.js';
 
 type SystemUpdateDependencies = {
-  appRoot: string;
-  homeDirectory: string;
-  installMode: 'git' | 'npm';
-  isPlatform: boolean;
-  environment: NodeJS.ProcessEnv;
-  runShellCommand(
-    command: string,
-    workingDirectory: string,
-    environment: NodeJS.ProcessEnv,
-    onOutput: (output: string) => void,
-    onErrorOutput: (errorOutput: string) => void,
-  ): Promise<SystemUpdateCommandResult>;
-  logInfo(message: string, detail?: string): void;
-  logError(message: string, detail?: string): void;
+  version: string;
+  installMode: 'managed' | 'git' | 'archive';
+  fetchLatestRelease: typeof revReleases.fetchLatest;
+  requestManagedUpdate(): Promise<void>;
 };
 
-/**
- * Creates the update workflow used by the system module and its focused tests.
- * Runtime-specific process spawning stays behind the injected command adapter.
- */
+/** Used by authenticated system routes and the CLI through the production composition root. */
 export function createSystemUpdateService(dependencies: SystemUpdateDependencies) {
+  let pending: Promise<{ success: boolean; status: string; message: string; output: string }> | null = null;
+  const getReleaseStatus = async () => {
+    const release = await dependencies.fetchLatestRelease();
+    return {
+      repository: revReleases.repository,
+      currentVersion: dependencies.version,
+      latestVersion: release?.version ?? null,
+      releaseInfo: release,
+      installMode: dependencies.installMode,
+      updateSupported: dependencies.installMode === 'managed',
+      updateAvailable: release !== null && revReleases.compareVersions(release.version, dependencies.version) === 1,
+      releasesUrl: revReleases.url,
+    };
+  };
+  const performUpdate = async () => {
+    const status = await getReleaseStatus();
+    if (!status.latestVersion) throw new Error('No published Rev GitHub release is available');
+    if (!status.updateAvailable) return { success: true, status: 'up-to-date',
+      message: 'Cloud Cli rev is up to date.', output: `Current Rev version: ${dependencies.version}` };
+    if (!status.updateSupported) throw new Error(`Use a managed Rev installation to update. Releases: ${revReleases.url}`);
+    await dependencies.requestManagedUpdate();
+    return { success: true, status: 'queued', message: 'Rev update queued in the independent deployment service.',
+      output: `Requested ${status.latestVersion} from ${revReleases.url}. Existing sessions remain running.` };
+  };
   return {
-    /** Selects and executes the correct update workflow for this installation. */
+    getReleaseStatus,
     async updateSystem() {
-      const updateCommand = dependencies.isPlatform
-        ? 'npm run update:platform'
-        : dependencies.installMode === 'git'
-          ? 'git checkout main && git pull && npm install'
-          : 'npm install -g @cloudcli-ai/cloudcli@latest';
-      const workingDirectory = dependencies.isPlatform || dependencies.installMode === 'git'
-        ? dependencies.appRoot
-        : dependencies.homeDirectory;
-
-      dependencies.logInfo('Starting system update from directory:', workingDirectory);
-
-      try {
-        const result = await dependencies.runShellCommand(
-          updateCommand,
-          workingDirectory,
-          dependencies.environment,
-          (output) => dependencies.logInfo('Update output:', output),
-          (errorOutput) => dependencies.logError('Update error:', errorOutput),
-        );
-
-        if (result.exitCode === 0) {
-          return {
-            success: true as const,
-            output: result.output || 'Update completed successfully',
-            message: 'Update completed. Please restart the server to apply changes.',
-          };
-        }
-
-        return {
-          success: false as const,
-          error: 'Update command failed',
-          output: result.output,
-          errorOutput: result.errorOutput,
-        };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        dependencies.logError('Update process error:', message);
-        return {
-          success: false as const,
-          error: message,
-        };
-      }
+      if (pending) return pending;
+      pending = performUpdate();
+      try { return await pending; } finally { pending = null; }
     },
   };
 }

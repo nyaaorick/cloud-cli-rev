@@ -8,6 +8,7 @@ import type {
   CliPackageMetadata,
   SandboxCommandService,
 } from '@/shared/types.js';
+import { revReleases } from '@/shared/index.js';
 import { terminalTextStyles } from '@/shared/utils.js';
 
 type CliServiceDependencies = {
@@ -19,8 +20,8 @@ type CliServiceDependencies = {
   fileSystem: CliFileSystem;
   output: CliOutput;
   sandboxService: SandboxCommandService;
-  getLatestPackageVersion(): Promise<string>;
-  updateGlobalPackage(): void;
+  getLatestReleaseVersion(): Promise<string | null>;
+  requestReleaseUpdate(): Promise<{ success: boolean; message: string; output: string }>;
   startServer(): Promise<void>;
   startBrowserUseMcp(): Promise<void>;
 };
@@ -65,16 +66,6 @@ function parseCliArguments(argumentsList: string[]): ParsedCliArguments {
   }
 
   return parsedArguments;
-}
-
-function isNewerVersion(candidateVersion: string, currentVersion: string): boolean {
-  const candidateParts = candidateVersion.split('.').map(Number);
-  const currentParts = currentVersion.split('.').map(Number);
-  for (let partIndex = 0; partIndex < 3; partIndex += 1) {
-    if (candidateParts[partIndex] > currentParts[partIndex]) return true;
-    if (candidateParts[partIndex] < currentParts[partIndex]) return false;
-  }
-  return false;
 }
 
 function showStatus(dependencies: CliServiceDependencies): void {
@@ -163,10 +154,10 @@ Environment Variables:
   CONTEXT_WINDOW      Fallback context window size (default: 160000)
 
 Documentation:
-  ${dependencies.packageMetadata.homepage || 'https://github.com/siteboon/claudecodeui'}
+  ${dependencies.packageMetadata.homepage || revReleases.url}
 
 Report Issues:
-  ${dependencies.packageMetadata.bugsUrl || 'https://github.com/siteboon/claudecodeui/issues'}
+  ${dependencies.packageMetadata.bugsUrl || revReleases.url}
 `);
 }
 
@@ -178,9 +169,9 @@ Report Issues:
 export function createCliService(dependencies: CliServiceDependencies): CliApplication {
   const checkForUpdates = async (silent = false): Promise<boolean> => {
     try {
-      const latestVersion = await dependencies.getLatestPackageVersion();
+      const latestVersion = await dependencies.getLatestReleaseVersion();
       const currentVersion = dependencies.packageMetadata.version;
-      if (isNewerVersion(latestVersion, currentVersion)) {
+      if (latestVersion && revReleases.compareVersions(latestVersion, currentVersion) === 1) {
         dependencies.output.log(`\n${terminalTextStyles.warn('[UPDATE]')} New version available: ${terminalTextStyles.bright(latestVersion)} (current: ${currentVersion})`);
         dependencies.output.log(`         Run ${terminalTextStyles.bright('cloudcli update')} to update\n`);
         return true;
@@ -197,22 +188,15 @@ export function createCliService(dependencies: CliServiceDependencies): CliAppli
     }
   };
 
-  const updatePackage = async (): Promise<void> => {
-    dependencies.output.log(`${terminalTextStyles.info('[INFO]')} Checking for updates...`);
-    const hasUpdate = await checkForUpdates(true);
-    if (!hasUpdate) {
-      dependencies.output.log(`${terminalTextStyles.ok('[OK]')} Already on the latest version (${dependencies.packageMetadata.version})`);
-      return;
-    }
-
+  const updatePackage = async (): Promise<number> => {
     try {
-      dependencies.output.log(`${terminalTextStyles.info('[INFO]')} Updating ${dependencies.packageMetadata.version}...`);
-      dependencies.updateGlobalPackage();
-      dependencies.output.log(`${terminalTextStyles.ok('[OK]')} Update complete! Restart cloudcli to use the new version.`);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      dependencies.output.error(`${terminalTextStyles.error('[ERROR]')} Update failed: ${message}`);
-      dependencies.output.log(`${terminalTextStyles.tip('[TIP]')} Try running manually: npm update -g @cloudcli-ai/cloudcli`);
+      const result = await dependencies.requestReleaseUpdate();
+      dependencies.output.log(result.message);
+      dependencies.output.log(result.output);
+      return result.success ? 0 : 1;
+    } catch {
+      dependencies.output.error(`Rev update could not be requested. See ${revReleases.url}`);
+      return 1;
     }
   };
 
@@ -249,8 +233,7 @@ export function createCliService(dependencies: CliServiceDependencies): CliAppli
           dependencies.output.log(dependencies.packageMetadata.version);
           return 0;
         case 'update':
-          await updatePackage();
-          return 0;
+          return updatePackage();
         default:
           dependencies.output.error(`\n❌ Unknown command: ${parsedArguments.command}`);
           dependencies.output.log('   Run "cloudcli help" for usage information.\n');

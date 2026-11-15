@@ -2,7 +2,7 @@
 
 [源码仓库](https://github.com/nyaaorick/cloud-cli-rev) · [问题反馈](https://github.com/nyaaorick/cloud-cli-rev/issues)
 
-独立维护的 CloudCLI UI 派生版本，供后续开发、问题追踪和版本管理使用。当前维护版本为 `1.37.8-rev.1`。
+独立维护的 CloudCLI UI 派生版本，供后续开发、问题追踪和版本管理使用。当前维护版本为 `1.37.8-rev.3`。
 
 **上游来源：CloudCLI UI (https://github.com/siteboon/claudecodeui)。** 本项目包含修改，不是上游官方发行版，也不代表 Siteboon AI B.V. 对本项目的认可。
 
@@ -28,7 +28,9 @@ npm run server
 
 开发时使用 `npm run dev`。标准开发服务默认通过 `http://localhost:3001` 访问，具体配置参考 `.env.example` 和上游说明。
 
-依赖及 lockfile 沿用上游。当前仅发布 GitHub 源码，未发布 npm 包、Docker 镜像或桌面二进制；不要使用上游 npm 安装/更新命令来安装本派生版。保留 `cloudcli` 命令兼容性，并增加 `cloud-cli-rev` 命令别名。
+依赖及 lockfile 沿用上游。发行渠道统一为 [Rev GitHub Releases](https://github.com/nyaaorick/cloud-cli-rev/releases)，提供源码、编译后的应用包、发布清单和 SHA256。未发布 npm 包、Docker 镜像或桌面二进制。保留 `cloudcli` 命令兼容性，并增加 `cloud-cli-rev` 命令别名。
+
+网页与 CLI 共用 Rev 更新源及完整 SemVer 比较。托管安装通过网页 Update 或 `cloud-cli-rev update` 请求独立部署服务，在新目录启动新实例后切换入口，保留当前会话。源码和普通压缩包安装指向 GitHub 发行说明，不调用上游 npm 更新。发布流程、配置与回退见 [Rev 更新说明](deploy/cn25/REV-UPDATES.md)。
 
 ## CN25 集成
 

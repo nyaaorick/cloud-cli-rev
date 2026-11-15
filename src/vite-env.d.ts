@@ -6,3 +6,6 @@
  * runners such as `tsx` that do not apply Vite's define replacement.
  */
 declare const __APP_VERSION__: string;
+
+/** Canonical Rev repository injected from shared/releases.js by the Vite configuration. */
+declare const __REV_REPOSITORY__: string;

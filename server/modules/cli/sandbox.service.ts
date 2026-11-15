@@ -6,6 +6,7 @@ import type {
   SandboxCommandService,
 } from '@/shared/types.js';
 import { terminalTextStyles } from '@/shared/utils.js';
+import { revReleases } from '@/shared/index.js';
 
 type SandboxServiceDependencies = {
   fileSystem: Pick<CliFileSystem, 'pathExists'>;
@@ -400,7 +401,7 @@ export function createSandboxCommandService(
           dependencies.output.log(`  ${terminalTextStyles.dim('$')} sbx stop ${sandboxName}`);
           dependencies.output.log(`  ${terminalTextStyles.dim('$')} sbx start ${sandboxName}`);
           dependencies.output.log(`  ${terminalTextStyles.dim('$')} sbx rm ${sandboxName}`);
-          dependencies.output.log(`\n${terminalTextStyles.dim('  Or install globally:')} npm install -g @cloudcli-ai/cloudcli\n`);
+          dependencies.output.log(`\n${terminalTextStyles.dim('  Cloud Cli rev releases:')} ${revReleases.url}\n`);
           return 0;
         }
 

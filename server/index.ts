@@ -61,7 +61,8 @@ const __dirname = getModuleDirectory(import.meta.url);
 // The server source runs from /server, while the compiled output runs from /dist-server/server.
 // Resolving the app root once keeps every repo-level lookup below aligned across both layouts.
 const APP_ROOT = findApplicationRoot(__dirname);
-const installMode = fs.existsSync(path.join(APP_ROOT, '.git')) ? 'git' : 'npm';
+const { getRevInstallation } = await import('./shared/index.js');
+const installMode = getRevInstallation(APP_ROOT).mode;
 // Version of the code that is actually running, captured once at process
 // startup. This intentionally does NOT re-read package.json per request: after
 // an update replaces the files on disk, package.json reflects the NEW version
@@ -77,10 +78,8 @@ const RUNNING_VERSION = (() => {
 })();
 const systemRoutes = createSystemModule({
     appRoot: APP_ROOT,
-    installMode,
-    isPlatform: IS_PLATFORM,
+    version: RUNNING_VERSION || '',
 });
-console.log('SERVER_PORT from env:', process.env.SERVER_PORT);
 
 const app = express();
 const server = http.createServer(app);

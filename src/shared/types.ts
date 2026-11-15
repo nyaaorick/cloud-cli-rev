@@ -159,7 +159,7 @@ export type ReleaseInfo = {
 };
 
 /** How this CloudCLI install was obtained; decides whether the UI offers a self-update action. */
-export type InstallMode = 'git' | 'npm';
+export type InstallMode = 'managed' | 'git' | 'archive' | 'npm';
 
 // ---------------------------
 

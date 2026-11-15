@@ -8,6 +8,11 @@ export function createSystemRouter(
 ): express.Router {
   const router = express.Router();
 
+  router.get('/release', async (_request, response, next) => {
+    try { response.json(await systemUpdateService.getReleaseStatus()); }
+    catch (error) { next(error); }
+  });
+
   router.post('/update', async (_request, response, next) => {
     try {
       const result = await systemUpdateService.updateSystem();

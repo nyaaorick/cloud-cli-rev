@@ -38,6 +38,11 @@ export const CLOUDCLI_WORDMARK_FONT_FAMILY =
  */
 export const APP_VERSION: string = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : '';
 
+/** Used by About and the update dialog for the same repository as the backend/publisher. */
+export const REV_REPOSITORY_URL = typeof __REV_REPOSITORY__ === 'string' ? `https://github.com/${__REV_REPOSITORY__}` : '';
+/** Used by the update dialog when this installation needs external deployment. */
+export const REV_RELEASES_URL = `${REV_REPOSITORY_URL}/releases`;
+
 // ---------------------------
 
 //----------------- SETTINGS NAVIGATION ------------

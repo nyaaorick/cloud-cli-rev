@@ -17,6 +17,7 @@ import readline from 'node:readline';
 import { fileURLToPath } from 'node:url';
 
 import spawn from 'cross-spawn';
+import { compareReleaseVersions, fetchLatestRevRelease, RELEASE_REPOSITORY, RELEASES_URL } from '../../shared/releases.js';
 import type { NextFunction, Request, RequestHandler, Response } from 'express';
 
 import { parseFrontMatter } from '@/shared/frontmatter.js';
@@ -34,6 +35,30 @@ import type {
   WorkspacePathValidationResult,
 } from '@/shared/types.js';
 
+//----------------- REV RELEASES ------------
+/** Used by system and CLI modules to share validated GitHub metadata and SemVer rules. */
+export const revReleases = { compareVersions: compareReleaseVersions, fetchLatest: fetchLatestRevRelease,
+  repository: RELEASE_REPOSITORY, url: RELEASES_URL };
+
+/**
+ * Used by bootstrap, system updates and the CLI to identify immutable managed
+ * releases. A missing .git never implies npm. Only a trusted explicit marker
+ * enables the fixed systemd entrypoint; HTTP clients cannot select a command.
+ */
+export function getRevInstallation(appRoot: string): { mode: 'managed' | 'git' | 'archive'; updateService: string | null } {
+  const marker = path.join(appRoot, '.rev-install.json');
+  if (fs.existsSync(marker)) {
+    const metadata = JSON.parse(fs.readFileSync(marker, 'utf8')) as Record<string, unknown>;
+    if (metadata.repository !== RELEASE_REPOSITORY || metadata.schemaVersion !== 1
+        || metadata.updateService !== 'cn25-cloudcli-rev-update.service') throw new Error('Invalid managed Rev installation marker');
+    const info = fs.statSync(marker);
+    if (info.uid !== 0 || (info.mode & 0o022) !== 0) throw new Error('Untrusted managed Rev installation marker');
+    return { mode: 'managed', updateService: metadata.updateService };
+  }
+  return { mode: fs.existsSync(path.join(appRoot, '.git')) ? 'git' : 'archive', updateService: null };
+}
+
+// ---------------------------
 //----------------- ENVIRONMENT UTILITIES ------------
 /**
  * Indicates whether the backend is running in hosted Platform mode rather than

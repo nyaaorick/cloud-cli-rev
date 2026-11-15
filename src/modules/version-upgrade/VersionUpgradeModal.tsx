@@ -4,6 +4,7 @@ import remarkGfm from "remark-gfm";
 import { useTranslation } from "react-i18next";
 
 import { api } from "@/shared/api";
+import { REV_RELEASES_URL } from "@/shared/constants";
 import type { ReleaseInfo,InstallMode } from "@/shared/types";
 import { copyTextToClipboard,IS_PLATFORM } from "@/shared/utils";
 
@@ -28,14 +29,16 @@ export function VersionUpgradeModal({
     installMode
 }: VersionUpgradeModalProps) {
     const { t } = useTranslation('common');
-    const upgradeCommand = installMode === 'npm'
-        ? t('versionUpdate.npmUpgradeCommand')
-        : IS_PLATFORM
-            ? 'npm run update:platform'
-            : 'git checkout main && git pull && npm install';
+    const upgradeCommand = installMode === 'managed'
+        ? 'cloud-cli-rev update'
+        : REV_RELEASES_URL;
+    // Deployment progress is shown while the independent updater handles the release.
     const [isUpdating, setIsUpdating] = useState(false);
+    // Retain the update result for display after the request completes.
     const [updateOutput, setUpdateOutput] = useState('');
+    // Retain a visible failure so the update is never reported as completed.
     const [updateError, setUpdateError] = useState('');
+    // Retain the hosted platform refresh countdown when that deployment mode is used.
     const [reloadCountdown, setReloadCountdown] = useState<number | null>(null);
 
     useEffect(() => {
@@ -79,7 +82,7 @@ export function VersionUpgradeModal({
             // page instead of JSON — e.g. while a hosted/Docker deployment
             // restarts mid-update — so never parse the body blindly.
             const rawBody = await response.text();
-            let data: { output?: string; error?: string } | null = null;
+            let data: { output?: string; error?: string; message?: string; status?: string } | null = null;
             try {
                 data = JSON.parse(rawBody);
             } catch {
@@ -103,8 +106,8 @@ export function VersionUpgradeModal({
 
             if (response.ok) {
                 setUpdateOutput(prev => prev + (data.output || '') + '\n');
-                setUpdateOutput(prev => prev + '\n✅ ' + t('versionUpdate.updateCompleted') + '\n');
-                if (!IS_PLATFORM) {
+                setUpdateOutput(prev => prev + '\n' + (data.message || t('versionUpdate.updateCompleted')) + '\n');
+                if (!IS_PLATFORM && data.status !== 'queued') {
                     setUpdateOutput(prev => prev + t('versionUpdate.restartServer') + '\n');
                 }
             } else {
@@ -261,7 +264,7 @@ export function VersionUpgradeModal({
                             </button>
                             <button
                                 onClick={handleUpdateNow}
-                                disabled={isUpdating}
+                                disabled={isUpdating || installMode !== 'managed'}
                                 className="flex flex-1 items-center justify-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-400"
                             >
                                 {isUpdating ? (

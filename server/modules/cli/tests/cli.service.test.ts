@@ -36,8 +36,8 @@ function createHarness() {
         return 7;
       },
     },
-    getLatestPackageVersion: async () => '1.2.3',
-    updateGlobalPackage: () => undefined,
+    getLatestReleaseVersion: async () => '1.2.3',
+    requestReleaseUpdate: async () => ({ success: true, message: 'queued', output: 'Rev update queued' }),
     startServer: async () => {
       serverStarts += 1;
     },
@@ -85,4 +85,11 @@ test('returns a failure code for an unknown command without exiting the process'
 
   assert.equal(exitCode, 1);
   assert.match(harness.errorMessages[0], /Unknown command: unknown/);
+});
+
+
+test('CLI update delegates to the Rev deployment request instead of a global npm update', async () => {
+  const harness = createHarness();
+  assert.equal(await harness.service.run(['update']), 0);
+  assert.ok(harness.logMessages.some(message => message.includes('Rev update queued')));
 });
