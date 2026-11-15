@@ -9,6 +9,7 @@ import { MAX_FILE_UPLOAD_SIZE_LABEL } from '@/shared/constants';
 import type { FileTreeViewMode } from '@/shared/types';
 
 type FileTreeHeaderProps = {
+  presentation?: 'full' | 'sidebar';
   viewMode: FileTreeViewMode;
   onViewModeChange: (mode: FileTreeViewMode) => void;
   searchQuery: string;
@@ -28,6 +29,7 @@ type FileTreeHeaderProps = {
 
 /** Rendered by FileTree to host the search box, view-mode switch and the create/upload/refresh/collapse actions. */
 export default function FileTreeHeader({
+  presentation = 'full',
   viewMode,
   onViewModeChange,
   searchQuery,
@@ -56,7 +58,7 @@ export default function FileTreeHeader({
   return (
     <div className="space-y-2 border-b border-border px-3 pb-2 pt-3">
       {/* Title and Toolbar */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-y-1">
         <h3 className="text-sm font-medium text-foreground">{t('fileTree.files')}</h3>
         <div className="flex items-center gap-0.5">
           {/* Action buttons */}
@@ -155,6 +157,7 @@ export default function FileTreeHeader({
               <ChevronDown className="h-3.5 w-3.5" />
             </Button>
           )}
+          {presentation !== 'sidebar' && <>
           {/* Divider */}
           <div className="mx-0.5 h-4 w-px bg-border" />
           {/* View mode buttons */}
@@ -188,6 +191,7 @@ export default function FileTreeHeader({
           >
             <TableProperties className="h-3.5 w-3.5" />
           </Button>
+          </>}
         </div>
       </div>
 

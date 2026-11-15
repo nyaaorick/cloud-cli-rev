@@ -167,6 +167,7 @@ function QuickSettingsPanelView({ selectedProject, onInsertCommand }: QuickSetti
   return (
     <>
       <QuickSettingsHandle
+        toolbar={!isMobile}
         isOpen={isOpen}
         isDragging={isDragging}
         style={handleStyle}

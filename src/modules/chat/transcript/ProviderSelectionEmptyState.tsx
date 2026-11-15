@@ -184,30 +184,30 @@ export default function ProviderSelectionEmptyState({
 
   if (!selectedSession && !currentSessionId) {
     return (
-      <div className="flex h-full items-center justify-center px-4">
+      <div className="workbench-chat-welcome px-4">
         <div className="w-full max-w-[34.25rem]">
-          <div className="mb-8 text-center">
-            <h2 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">
-              {t("providerSelection.title")}
+          <div className="mb-5 text-center">
+            <h2 className="workbench-chat-welcome-heading">
+              {t("providerSelection.workbenchTitle", { defaultValue: "What would you like to work on?" })}
             </h2>
-            <p className="mt-1 text-[13px] text-muted-foreground">
-              {t("providerSelection.description")}
+            <p className="workbench-chat-welcome-subtitle">
+              {t("providerSelection.workbenchDescription", { defaultValue: "Ask, build, and review in your workspace." })}
             </p>
           </div>
 
           <Dialog open={dialogOpen} onOpenChange={setPickerOpen}>
             <DialogTrigger asChild>
               <Card
-                className="group mx-auto max-w-xs cursor-pointer border-border/60 transition-all duration-150 hover:border-border hover:shadow-md active:scale-[0.99]"
+                className="group mx-auto max-w-xs cursor-pointer border-transparent bg-transparent shadow-none hover:bg-accent"
                 role="button"
                 tabIndex={0}
               >
-                <div className="flex items-center gap-2 p-3">
+                <div className="flex items-center justify-center gap-2 px-3 py-1.5">
                   <LLMProviderLogo
                     provider={provider}
                     className="h-5 w-5 shrink-0"
                   />
-                  <div className="min-w-0 flex-1">
+                  <div className="min-w-0">
                     <div className="flex items-center gap-1">
                       <span className="text-xs font-semibold text-foreground">
                         {getProviderDisplayName(provider)}
@@ -312,26 +312,6 @@ export default function ProviderSelectionEmptyState({
               />
             </DialogContent>
           </Dialog>
-
-          <p className="mt-4 text-center text-sm text-muted-foreground/70">
-            {
-              {
-                claude: t("providerSelection.readyPrompt.claude", {
-                  model: providerModels.claude,
-                }),
-                cursor: t("providerSelection.readyPrompt.cursor", {
-                  model: providerModels.cursor,
-                }),
-                codex: t("providerSelection.readyPrompt.codex", {
-                  model: providerModels.codex,
-                }),
-                opencode: t("providerSelection.readyPrompt.opencode", {
-                  model: providerModels.opencode,
-                  defaultValue: "Ready with OpenCode {{model}}",
-                }),
-              }[provider]
-            }
-          </p>
 
           <p className="mt-3 flex items-center justify-center gap-1.5 text-center text-xs text-muted-foreground/60">
             <Trans

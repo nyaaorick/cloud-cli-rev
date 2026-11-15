@@ -45,6 +45,8 @@ type CommandPaletteProps = {
   onStartNewChat: (project: Project) => void;
   onOpenSettings: (tab?: string) => void;
   onShowTab?: (tab: AppTab) => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 };
 
 const NAV_TABS: Array<{ id: AppTab; labelKey: string; keywords: string }> = [
@@ -61,9 +63,17 @@ function CommandPalette({
   onStartNewChat,
   onOpenSettings,
   onShowTab,
+  open: controlledOpen,
+  onOpenChange,
 }: CommandPaletteProps) {
   const { t } = useTranslation();
-  const [open, setOpen] = React.useState(false);
+  // Standalone consumers keep local visibility; the workbench controls it from its command center.
+  const [localOpen, setLocalOpen] = React.useState(false);
+  const open = controlledOpen ?? localOpen;
+  const setOpen = React.useCallback((value: boolean) => {
+    if (controlledOpen === undefined) setLocalOpen(value);
+    onOpenChange?.(value);
+  }, [controlledOpen, onOpenChange]);
   const [search, setSearch] = React.useState('');
   const [pages, setPages] = React.useState<Page[]>([]);
   const { toggleDarkMode } = useTheme();
@@ -75,13 +85,14 @@ function CommandPalette({
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const isCmdK = (e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'k';
-      if (!isCmdK) return;
+      const isCommandPalette = (e.metaKey || e.ctrlKey) && e.shiftKey && !e.altKey && e.key.toLowerCase() === 'p';
+      if ((!isCmdK && !isCommandPalette) || e.defaultPrevented || e.isComposing || e.repeat) return;
       e.preventDefault();
-      setOpen((prev) => !prev);
+      setOpen(!open);
     };
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [open, setOpen]);
 
   React.useEffect(() => {
     if (!open) {
@@ -131,7 +142,7 @@ function CommandPalette({
   const run = React.useCallback((fn: () => void) => {
     setOpen(false);
     fn();
-  }, []);
+  }, [setOpen]);
 
   const pushPage = React.useCallback((next: Page) => {
     setSearch('');

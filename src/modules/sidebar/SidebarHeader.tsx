@@ -5,11 +5,7 @@ import { Button, Input } from '@/shared/ui';
 import { CLOUDCLI_WORDMARK_FONT_FAMILY } from '@/shared/constants';
 import { IS_PLATFORM } from '@/shared/utils';
 import type { SidebarSearchMode } from '@/shared/types';
-import GitHubStarBadge from '@/modules/sidebar/GitHubStarBadge';
 import SidebarModeTabs from '@/modules/sidebar/SidebarModeTabs';
-
-const MOD_KEY =
-  typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl';
 
 type SidebarHeaderProps = {
   isPWA: boolean;
@@ -81,99 +77,22 @@ export default function SidebarHeader({
 
   return (
     <div className="flex-shrink-0">
-      {/* Desktop header */}
-      <div
-        className="hidden px-3 pb-2 pt-3 md:block"
-        style={{}}
-      >
-        <div className="flex items-center justify-between gap-2">
-          {IS_PLATFORM ? (
-            <a
-              href="https://cloudcli.ai/dashboard"
-              className="flex min-w-0 items-center gap-2.5 transition-opacity hover:opacity-80"
-              title={t('tooltips.viewEnvironments')}
-            >
-              <LogoBlock t={t} />
-            </a>
-          ) : (
-            <LogoBlock t={t} />
-          )}
-
-          <div className="flex flex-shrink-0 items-center gap-0.5">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 w-7 rounded-lg p-0 text-muted-foreground hover:bg-accent/80 hover:text-foreground"
-              onClick={onRefresh}
-              disabled={isRefreshing}
-              title={t('tooltips.refresh')}
-            >
-              <RefreshCw
-                className={`h-3.5 w-3.5 ${
-                  isRefreshing ? 'animate-spin' : ''
-                }`}
-              />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 w-7 rounded-lg p-0 text-muted-foreground hover:bg-accent/80 hover:text-foreground"
-              onClick={onCreateProject}
-              title={t('tooltips.createProject')}
-            >
-              <Plus className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 w-7 rounded-lg p-0 text-muted-foreground hover:bg-accent/80 hover:text-foreground"
-              onClick={onCollapseSidebar}
-              title={t('tooltips.hideSidebar')}
-            >
-              <PanelLeftClose className="h-3.5 w-3.5" />
-            </Button>
+      <div className="hidden md:block">
+        <div className="workbench-sidebar-heading">
+          <span>{t('common:workbench.conversations', { defaultValue: 'CONVERSATIONS' })}</span>
+          <div className="flex items-center gap-0.5">
+            <button type="button" className="workbench-icon-button" onClick={onRefresh} disabled={isRefreshing} aria-label={t('tooltips.refresh')}><RefreshCw size={14} className={isRefreshing ? 'animate-spin' : ''} /></button>
+            <button type="button" className="workbench-icon-button" onClick={onCreateProject} aria-label={t('tooltips.createProject')}><Plus size={16} /></button>
+            <button type="button" className="workbench-icon-button" onClick={onCollapseSidebar} aria-label={t('tooltips.hideSidebar')}><PanelLeftClose size={14} /></button>
           </div>
         </div>
-
-        <GitHubStarBadge />
-
-        {/* Search bar */}
         {showSearchTools && (
-          <div className="mt-2.5 space-y-2">
-            {/* Search mode toggle */}
-            <SidebarModeTabs
-              searchMode={searchMode}
-              onSearchModeChange={onSearchModeChange}
-              runningSessionsCount={runningSessionsCount}
-              t={t}
-            />
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/50" />
-              <Input
-                type="text"
-                placeholder={searchPlaceholder}
-                value={searchFilter}
-                onChange={(event) => onSearchFilterChange(event.target.value)}
-                className="nav-search-input h-9 rounded-xl border-0 pl-9 pr-14 text-sm transition-all duration-200 placeholder:text-muted-foreground/40 focus-visible:ring-0 focus-visible:ring-offset-0"
-              />
-              {searchFilter ? (
-                <button
-                  onClick={onClearSearchFilter}
-                  aria-label={t('tooltips.clearSearch')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-md p-0.5 hover:bg-accent"
-                >
-                  <X className="h-3 w-3 text-muted-foreground" />
-                </button>
-              ) : (
-                <kbd
-                  aria-hidden
-                  title={t('tooltips.openCommandPalette')}
-                  className="pointer-events-none absolute right-2.5 top-1/2 hidden -translate-y-1/2 items-center gap-0.5 rounded border border-border/60 bg-muted/40 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground md:inline-flex"
-                >
-                  {MOD_KEY}
-                  <span>K</span>
-                </kbd>
-              )}
+          <div className="workbench-sidebar-search">
+            <SidebarModeTabs searchMode={searchMode} onSearchModeChange={onSearchModeChange} runningSessionsCount={runningSessionsCount} t={t} />
+            <div className="relative mt-2">
+              <Search className="pointer-events-none absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
+              <Input type="text" placeholder={searchPlaceholder} value={searchFilter} onChange={(event) => onSearchFilterChange(event.target.value)} className="nav-search-input pl-7 pr-7 focus-visible:ring-0" />
+              {searchFilter && <button type="button" onClick={onClearSearchFilter} aria-label={t('tooltips.clearSearch')} className="absolute right-2 top-1/2 -translate-y-1/2"><X size={12} /></button>}
             </div>
           </div>
         )}

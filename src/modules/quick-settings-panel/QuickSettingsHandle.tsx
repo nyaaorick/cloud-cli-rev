@@ -6,6 +6,7 @@ import {
   ChevronLeft,
   ChevronRight,
   GripVertical,
+  PanelRight,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
@@ -18,6 +19,7 @@ type QuickSettingsHandleProps = {
   onClick: (event: ReactMouseEvent<HTMLButtonElement>) => void;
   onMouseDown: (event: ReactMouseEvent<HTMLButtonElement>) => void;
   onTouchStart: (event: ReactTouchEvent<HTMLButtonElement>) => void;
+  toolbar?: boolean;
 };
 
 /** Rendered by QuickSettingsPanelView as the draggable edge handle that opens and closes the drawer. */
@@ -28,6 +30,7 @@ export default function QuickSettingsHandle({
   onClick,
   onMouseDown,
   onTouchStart,
+  toolbar = false,
 }: QuickSettingsHandleProps) {
   const { t } = useTranslation('settings');
 
@@ -52,19 +55,20 @@ export default function QuickSettingsHandle({
     <button
       type="button"
       onClick={onClick}
-      onMouseDown={onMouseDown}
-      onTouchStart={onTouchStart}
-      className={`fixed ${placementClass} z-50 ${transitionClass} border bg-white dark:bg-gray-800 ${borderClass} rounded-l-md p-2 shadow-lg transition-colors hover:bg-gray-100 dark:hover:bg-gray-700 ${cursorClass} touch-none`}
-      style={{
+      onMouseDown={toolbar ? undefined : onMouseDown}
+      onTouchStart={toolbar ? undefined : onTouchStart}
+      className={toolbar ? 'workbench-icon-button fixed z-50' : `fixed ${placementClass} z-50 ${transitionClass} border bg-white dark:bg-gray-800 ${borderClass} rounded-l-md p-2 shadow-lg transition-colors hover:bg-gray-100 dark:hover:bg-gray-700 ${cursorClass} touch-none`}
+      style={toolbar ? { top: 5, right: 8 } : {
         ...style,
         touchAction: 'none',
         WebkitTouchCallout: 'none',
         WebkitUserSelect: 'none',
       }}
       aria-label={ariaLabel}
-      title={title}
+      aria-expanded={isOpen}
+      title={toolbar ? ariaLabel : title}
     >
-      {isDragging ? (
+      {toolbar ? <PanelRight size={16} /> : isDragging ? (
         <GripVertical className="h-5 w-5 text-blue-500 dark:text-blue-400" />
       ) : isOpen ? (
         <ChevronRight className="h-5 w-5 text-gray-600 dark:text-gray-400" />

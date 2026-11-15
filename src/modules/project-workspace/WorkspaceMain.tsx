@@ -15,6 +15,8 @@ import { EditorSidebar, useEditorSidebar } from '@/modules/code-editor';
 import WorkspaceHeader from '@/modules/project-workspace/WorkspaceHeader';
 import WorkspaceStateView from '@/modules/project-workspace/WorkspaceStateView';
 import WorkspaceErrorBoundary from '@/modules/project-workspace/WorkspaceErrorBoundary';
+import { WorkbenchTerminalPanel } from '@/modules/project-workspace/WorkbenchTerminalPanel';
+import { useWorkbenchLayout } from '@/modules/project-workspace/context/WorkbenchLayoutContext';
 
 type WorkspaceMainProps = {
   selectedProject: Project | null;
@@ -60,12 +62,21 @@ function WorkspaceMain({
   onRenameSession,
 }: WorkspaceMainProps) {
   const preferences = useUiPreferences();
+  const { terminalOpen, setTerminalOpen } = useWorkbenchLayout();
+  const conversationVisible = activeTab === 'chat' || activeTab === 'shell' || (!isMobile && activeTab === 'files');
   const { showRawParameters, showThinking, sendByCtrlEnter } = preferences;
 
   const { tasksEnabled, isTaskMasterInstalled } = useTasksSettings();
   const browserUseEnabled = useBrowserUseEnabled();
 
   useTaskMasterProjectSync(selectedProject);
+  // Old links/preferences and mobile navigation may still request the former full-page shell view.
+  useEffect(() => {
+    if (activeTab === 'shell') {
+      setTerminalOpen(true);
+      setActiveTab('chat');
+    }
+  }, [activeTab, setActiveTab, setTerminalOpen]);
   // The folder an in-chat `path/` reference asked to reveal. Held as an object
   // so that re-clicking the same folder is a new request the tree acts on.
   const [revealDirectory, setRevealDirectory] = useState<DirectoryRevealRequest | null>(null);
@@ -142,9 +153,9 @@ function WorkspaceMain({
   }
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="workbench-main flex h-full min-h-0 flex-col">
       <WorkspaceHeader
-        activeTab={activeTab}
+        activeTab={conversationVisible ? 'chat' : activeTab}
         setActiveTab={setActiveTab}
         selectedProject={selectedProject}
         selectedSession={selectedSession}
@@ -156,11 +167,16 @@ function WorkspaceMain({
       />
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
-        <div className={`flex min-h-0 min-w-[200px] flex-col overflow-hidden ${editorExpanded ? 'hidden' : ''} flex-1`}>
-          <div className={`h-full ${activeTab === 'chat' ? 'block' : 'hidden'}`}>
+          {activeTab === 'files' && (
+            <div className={isMobile ? 'h-full min-w-0 flex-1 overflow-hidden' : 'workbench-explorer'}>
+              <FileTree selectedProject={selectedProject} onFileOpen={handleFileOpen} revealDirectory={revealDirectory} presentation={isMobile ? 'full' : 'sidebar'} />
+            </div>
+          )}
+        <div className={`flex min-h-0 min-w-[200px] flex-col overflow-hidden ${editorExpanded || (isMobile && activeTab === 'files') ? 'hidden' : ''} flex-1`}>
+          <div className={`h-full ${conversationVisible ? 'block' : 'hidden'}`}>
             <WorkspaceErrorBoundary showDetails>
               <ChatInterface
-                isActive={activeTab === 'chat'}
+                isActive={conversationVisible}
                 selectedProject={selectedProject}
                 selectedSession={selectedSession}
                 ws={ws}
@@ -178,27 +194,6 @@ function WorkspaceMain({
               />
             </WorkspaceErrorBoundary>
           </div>
-
-          {activeTab === 'files' && (
-            <div className="h-full overflow-hidden">
-              <FileTree
-                selectedProject={selectedProject}
-                onFileOpen={handleFileOpen}
-                revealDirectory={revealDirectory}
-              />
-            </div>
-          )}
-
-          {activeTab === 'shell' && (
-            <div className="h-full w-full overflow-hidden">
-              <StandaloneShell
-                project={selectedProject}
-                session={selectedSession}
-                showHeader={false}
-                isActive={activeTab === 'shell'}
-              />
-            </div>
-          )}
 
           {activeTab === 'git' && (
             <div className="h-full overflow-hidden">
@@ -243,9 +238,12 @@ function WorkspaceMain({
           onToggleEditorExpand={handleToggleEditorExpand}
           onUnsavedChangesChange={handleUnsavedChangesChange}
           projectPath={selectedProject.path}
-          fillSpace={activeTab === 'files'}
+          fillSpace={false}
         />
       </div>
+      <WorkbenchTerminalPanel>
+        <StandaloneShell project={selectedProject} session={selectedSession} showHeader={false} isActive={terminalOpen} />
+      </WorkbenchTerminalPanel>
     </div>
   );
 }

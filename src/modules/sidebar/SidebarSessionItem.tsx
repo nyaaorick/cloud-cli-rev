@@ -427,13 +427,13 @@ function SidebarSessionItem({
           aria-disabled={isSelecting && !isSelectable ? true : undefined}
           className={cn(
             buttonVariants({ variant: 'ghost' }),
-            'h-auto w-full justify-start rounded-md border bg-card p-2 text-left font-normal transition-all duration-150',
+            'h-auto min-h-7 w-full justify-start rounded-none border border-transparent bg-transparent px-3 py-1 text-left font-normal transition-colors',
             isSelecting ? 'pr-2' : 'pr-11',
-            isSelected ? 'border-primary/20 bg-primary/5' : 'border-border/30',
+            isSelected ? 'bg-accent text-accent-foreground' : 'border-transparent',
             !isSelected && isProcessing
-              ? 'border-border/60 bg-muted/20 hover:bg-muted/25'
+              ? 'bg-muted/20 hover:bg-accent'
               : !isSelected && sessionView.isActive
-                ? 'border-green-500/30 bg-green-50/5 hover:bg-green-50/10 dark:bg-green-900/5 dark:hover:bg-green-900/10'
+                ? 'hover:bg-accent'
                 : 'hover:bg-accent/50',
             isChecked && 'border-primary/40 bg-primary/10',
           )}

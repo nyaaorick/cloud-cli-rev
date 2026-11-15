@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.37.8-rev.6 — Unreleased
+
+- 采用 VS Code Modern 工作台：标题栏命令中心、活动栏、紧凑侧栏和真实状态栏。
+- Codex 风格聊天保持中央位置，文件树与编辑器按需打开。
+- 终端改为独立底部面板，收起后保留终端实例与会话状态。
+- 支持 Cmd/Ctrl+Shift+P 命令面板和 Cmd/Ctrl+J 面板切换，保留原 Cmd/Ctrl+K。
+- 统一深浅主题、字体、边框和导航密度，移除工作台玻璃效果和重复入口。
+
 ## 1.37.8-rev.1 — 2026-11-15
 
 - Establish Cloud Cli rev as an independently maintained derivative.

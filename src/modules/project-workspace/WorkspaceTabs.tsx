@@ -1,9 +1,8 @@
 import { MessageSquare, Terminal, Folder, GitBranch, ClipboardCheck, MonitorPlay, type LucideIcon } from 'lucide-react';
-import { Fragment } from 'react';
 import type { Dispatch, KeyboardEvent, SetStateAction } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { Tooltip, PillBar, Pill } from '@/shared/ui';
+import { Tooltip } from '@/shared/ui';
 import type { AppTab } from '@/shared/types';
 import { usePlugins,PluginIcon } from '@/modules/plugins';
 
@@ -12,6 +11,9 @@ type WorkspaceTabsProps = {
   setActiveTab: Dispatch<SetStateAction<AppTab>>;
   shouldShowTasksTab: boolean;
   shouldShowBrowserTab: boolean;
+  variant?: 'tabs' | 'activity';
+  sidebarVisible?: boolean;
+  onToggleSidebar?: () => void;
 };
 
 type BuiltInTab = {
@@ -58,12 +60,15 @@ export default function WorkspaceTabs({
   setActiveTab,
   shouldShowTasksTab,
   shouldShowBrowserTab,
+  variant = 'tabs',
+  sidebarVisible = true,
+  onToggleSidebar,
 }: WorkspaceTabsProps) {
   const { t } = useTranslation();
   const { plugins } = usePlugins();
 
   const builtInTabs: BuiltInTab[] = [
-    ...BASE_TABS,
+    ...BASE_TABS.filter((tab) => variant !== 'activity' || tab.id !== 'shell'),
     ...(shouldShowBrowserTab ? [BROWSER_TAB] : []),
     ...(shouldShowTasksTab ? [TASKS_TAB] : []),
   ];
@@ -81,15 +86,15 @@ export default function WorkspaceTabs({
   const tabs: TabDefinition[] = [...builtInTabs, ...pluginTabs];
 
   const handleTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
-    const tabList = event.currentTarget.closest('[role="tablist"]');
+    const tabList = event.currentTarget.closest('[data-workbench-navigation]');
     if (!tabList) return;
 
-    const tabButtons = Array.from(tabList.querySelectorAll<HTMLButtonElement>('[role="tab"]'));
+    const tabButtons = Array.from(tabList.querySelectorAll<HTMLButtonElement>('button'));
     const currentIndex = tabButtons.indexOf(event.currentTarget);
     let nextIndex: number;
 
-    if (event.key === 'ArrowRight') nextIndex = (currentIndex + 1) % tabButtons.length;
-    else if (event.key === 'ArrowLeft') nextIndex = (currentIndex - 1 + tabButtons.length) % tabButtons.length;
+    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') nextIndex = (currentIndex + 1) % tabButtons.length;
+    else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') nextIndex = (currentIndex - 1 + tabButtons.length) % tabButtons.length;
     else if (event.key === 'Home') nextIndex = 0;
     else if (event.key === 'End') nextIndex = tabButtons.length - 1;
     else return;
@@ -100,48 +105,45 @@ export default function WorkspaceTabs({
   };
 
   return (
-    <PillBar
-      role="tablist"
+    <nav
+      data-workbench-navigation
       aria-label={t('tabs.views', { defaultValue: 'Workspace views' })}
-      className="min-w-max border border-border/40 bg-muted/50 shadow-inner shadow-black/[0.025] dark:shadow-black/10"
+      className={variant === 'activity' ? 'workbench-activity-navigation' : 'workbench-mobile-navigation'}
     >
-      {tabs.map((tab, index) => {
-        const isActive = tab.id === activeTab;
+      {tabs.map((tab) => {
+        const isActive = tab.id === activeTab && (tab.id !== 'chat' || sidebarVisible);
         const displayLabel = tab.kind === 'builtin' ? t(tab.labelKey) : tab.label;
-
+        const handleSelect = () => {
+          if (variant === 'activity' && tab.id === 'chat' && activeTab === 'chat') {
+            onToggleSidebar?.();
+          } else if (variant === 'activity' && tab.id === 'files' && activeTab === 'files') {
+            setActiveTab('chat');
+            if (sidebarVisible) onToggleSidebar?.();
+          } else {
+            setActiveTab(tab.id);
+            if (tab.id === 'chat' && !sidebarVisible) onToggleSidebar?.();
+          }
+        };
         return (
-          <Fragment key={`${tab.id}-${index}`}>
-            {index === builtInTabs.length && pluginTabs.length > 0 && (
-              <span aria-hidden="true" className="mx-1 h-4 w-px shrink-0 bg-border" />
-            )}
-            <Tooltip content={displayLabel} position="bottom">
-              <Pill
-                role="tab"
-                aria-label={displayLabel}
-                aria-selected={isActive}
-                tabIndex={isActive ? 0 : -1}
-                isActive={isActive}
-                onClick={() => setActiveTab(tab.id)}
-                onKeyDown={handleTabKeyDown}
-                className="h-8 max-w-44 px-2.5 py-[5px]"
-              >
-                {tab.kind === 'builtin' ? (
-                  <tab.icon className="h-3.5 w-3.5 shrink-0" strokeWidth={isActive ? 2.2 : 1.8} />
-                ) : (
-                  <PluginIcon
-                    pluginName={tab.pluginName}
-                    iconFile={tab.iconFile}
-                    className="flex h-3.5 w-3.5 shrink-0 items-center justify-center [&>svg]:h-full [&>svg]:w-full"
-                  />
-                )}
-                <span className={`${isActive ? 'inline max-w-28' : 'hidden'} truncate sm:max-w-36 lg:inline`}>
-                  {displayLabel}
-                </span>
-              </Pill>
-            </Tooltip>
-          </Fragment>
+          <Tooltip key={tab.id} content={displayLabel} position={variant === 'activity' ? 'right' : 'bottom'}>
+            <button
+              type="button"
+              aria-label={displayLabel}
+              aria-pressed={isActive}
+              onClick={handleSelect}
+              onKeyDown={handleTabKeyDown}
+              className={variant === 'activity' ? 'workbench-activity-button' : 'workbench-mobile-tab'}
+            >
+              {tab.kind === 'builtin' ? (
+                <tab.icon size={variant === 'activity' ? 24 : 16} strokeWidth={1.5} />
+              ) : (
+                <PluginIcon pluginName={tab.pluginName} iconFile={tab.iconFile} className="flex h-5 w-5 items-center justify-center [&>svg]:h-full [&>svg]:w-full" />
+              )}
+              {variant !== 'activity' && <span>{displayLabel}</span>}
+            </button>
+          </Tooltip>
         );
       })}
-    </PillBar>
+    </nav>
   );
 }

@@ -23,38 +23,34 @@
 
 @layer base {
   :root {
-    --background: 44 22% 96%;
-    --foreground: 36 25% 4%;
-    --card: 0 0% 100%;
-    --card-foreground: 36 25% 4%;
+    --background: 0 0% 100%;
+    --foreground: 0 0% 23.14%;
+    --card: 0 0% 97.25%;
+    --card-foreground: 0 0% 23.14%;
     --popover: 0 0% 100%;
-    --popover-foreground: 36 25% 4%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 44 15% 91%;
-    --secondary-foreground: 36 15% 18%;
-    --muted: 44 15% 91%;
-    --muted-foreground: 40 5% 44%;
-    --accent: 44 15% 91%;
-    --accent-foreground: 36 15% 18%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 44 14% 87%;
-    --input: 44 14% 87%;
-    --ring: 221.2 83.2% 53.3%;
-    --radius: 0.5rem;
+    --popover-foreground: 0 0% 23.14%;
+    --primary: 209.02 100% 36.08%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 94.9%;
+    --secondary-foreground: 0 0% 23.14%;
+    --muted: 0 0% 94.9%;
+    --muted-foreground: 0 0% 38.04%;
+    --accent: 0 0% 91%;
+    --accent-foreground: 0 0% 12.16%;
+    --destructive: 3 90% 48%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 89.8%;
+    --input: 0 0% 80.78%;
+    --ring: 209.02 100% 36.08%;
+    --radius: 0.25rem;
 
-    /* Nav design tokens */
-    --nav-glass-bg: 44 22% 96% / 0.7;
-    --nav-glass-blur: 20px;
-    --nav-glass-saturate: 1.8;
-    --nav-tab-glow: 221.2 83.2% 53.3% / 0.18;
-    --nav-tab-ring: 221.2 83.2% 53.3% / 0.10;
-    --nav-float-shadow: 0 0% 0% / 0.06;
-    --nav-float-ring: 44 14% 87% / 0.5;
-    --nav-divider-color: 44 14% 87% / 0.5;
-    --nav-input-bg: 44 15% 91% / 0.5;
-    --nav-input-focus-ring: 221.2 83.2% 53.3% / 0.22;
+    /* VS Code Modern workbench surfaces; also used by the chat/editor chrome. */
+    --workbench-chrome: #f8f8f8;
+    --workbench-editor: #ffffff;
+    --workbench-input: #ffffff;
+    --workbench-hover: #e8e8e8;
+    --workbench-border: #e5e5e5;
+    --workbench-inactive: #616161;
 
     /* Safe area CSS variables */
     --safe-area-inset-top: env(safe-area-inset-top);
@@ -85,37 +81,32 @@
   }
 
   .dark {
-    --background: 0 0% 8%;
-    --foreground: 40 8% 93%;
-    --card: 0 0% 12%;
-    --card-foreground: 40 8% 93%;
-    --popover: 0 0% 12%;
-    --popover-foreground: 40 8% 93%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 0 0% 8%;
-    --secondary: 0 0% 17%;
-    --secondary-foreground: 40 8% 93%;
-    --muted: 0 0% 17%;
-    --muted-foreground: 0 0% 60%;
-    --accent: 0 0% 17%;
-    --accent-foreground: 40 8% 93%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 40 8% 93%;
-    --border: 0 0% 17%;
-    --input: 0 0% 23%;
-    --ring: 217.2 91.2% 59.8%;
+    --background: 0 0% 12.16%;
+    --foreground: 0 0% 80%;
+    --card: 0 0% 14.51%;
+    --card-foreground: 0 0% 80%;
+    --popover: 0 0% 12.16%;
+    --popover-foreground: 0 0% 80%;
+    --primary: 206.04 100% 41.57%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 16.86%;
+    --secondary-foreground: 0 0% 80%;
+    --muted: 0 0% 16.86%;
+    --muted-foreground: 0 0% 61.57%;
+    --accent: 0 0% 16.86%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 3 93% 64%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 16.86%;
+    --input: 0 0% 23.53%;
+    --ring: 206.04 100% 41.57%;
+    --workbench-chrome: #181818;
+    --workbench-editor: #1f1f1f;
+    --workbench-input: #313131;
+    --workbench-hover: #2b2b2b;
+    --workbench-border: #2b2b2b;
+    --workbench-inactive: #868686;
 
-    /* Nav design tokens — dark overrides */
-    --nav-glass-bg: 0 0% 12% / 0.55;
-    --nav-glass-blur: 24px;
-    --nav-glass-saturate: 1.6;
-    --nav-tab-glow: 217.2 91.2% 59.8% / 0.25;
-    --nav-tab-ring: 217.2 91.2% 59.8% / 0.15;
-    --nav-float-shadow: 0 0% 0% / 0.35;
-    --nav-float-ring: 0 0% 17% / 0.3;
-    --nav-divider-color: 0 0% 17% / 0.5;
-    --nav-input-bg: 0 0% 17% / 0.5;
-    --nav-input-focus-ring: 217.2 91.2% 59.8% / 0.25;
   }
 }
 
@@ -129,7 +120,8 @@
   body {
     @apply bg-background text-foreground;
 
-    font-family: "Encode Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", system-ui, sans-serif;
+    font-size: 13px;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     margin: 0;
@@ -268,42 +260,14 @@
                 opacity 300ms ease-in-out;
   }
 
-  /* Nav glass surface — uses theme tokens */
-  .nav-glass {
-    background: hsl(var(--nav-glass-bg));
-    backdrop-filter: blur(var(--nav-glass-blur)) saturate(var(--nav-glass-saturate));
-    -webkit-backdrop-filter: blur(var(--nav-glass-blur)) saturate(var(--nav-glass-saturate));
-  }
+  /* Flat workbench navigation, shared with the mobile drawer. */
+  .nav-glass { background: var(--workbench-chrome); }
+  .nav-tab-active { color: hsl(var(--foreground)); background: var(--workbench-hover); box-shadow: none; }
+  .mobile-nav-float { border-top: 1px solid var(--workbench-border); box-shadow: none; }
+  .nav-divider { height: 1px; background: var(--workbench-border); }
+  .nav-search-input { background: var(--workbench-input); border: 1px solid hsl(var(--input)); }
+  .nav-search-input:focus-within { outline: 1px solid hsl(var(--primary)); box-shadow: none; }
 
-  /* Nav tab active pill glow — uses theme tokens */
-  .nav-tab-active {
-    box-shadow: 0 1px 8px hsl(var(--nav-tab-glow)),
-                0 0 0 1px hsl(var(--nav-tab-ring));
-  }
-
-  /* Floating mobile nav bar — uses theme tokens */
-  .mobile-nav-float {
-    box-shadow: 0 -1px 20px hsl(var(--nav-float-shadow)),
-                0 0 0 1px hsl(var(--nav-float-ring));
-  }
-
-  /* Subtle sidebar divider — uses theme tokens */
-  .nav-divider {
-    height: 1px;
-    background: linear-gradient(90deg, transparent, hsl(var(--nav-divider-color)) 20%, hsl(var(--nav-divider-color)) 80%, transparent);
-  }
-
-  /* Nav search input surface — uses theme tokens */
-  .nav-search-input {
-    background: hsl(var(--nav-input-bg));
-    border: none;
-  }
-
-  .nav-search-input:focus-within {
-    background: hsl(var(--background));
-    box-shadow: 0 0 0 2px hsl(var(--nav-input-focus-ring));
-  }
-  
   /* Modal and dropdown transitions */
   .modal-transition {
     transition: opacity 200ms ease-in-out,
@@ -403,7 +367,7 @@
   /* Fix checkbox appearance in dark mode */
   .dark input[type="checkbox"] {
     background-color: rgb(31 41 55); /* gray-800 */
-    border-color: rgb(75 85 99); /* gray-600 */
+    border-color: #989898; /* gray-600 */
     color: rgb(37 99 235); /* blue-600 */
     color-scheme: dark;
   }
@@ -421,7 +385,7 @@
   /* Fix radio button appearance in dark mode */
   .dark input[type="radio"] {
     background-color: rgb(31 41 55); /* gray-800 */
-    border-color: rgb(75 85 99); /* gray-600 */
+    border-color: #989898; /* gray-600 */
     color: rgb(37 99 235); /* blue-600 */
     color-scheme: dark;
   }
@@ -488,76 +452,76 @@
   
   /* Fix placeholder text color to be properly gray */
   textarea::placeholder {
-    color: rgb(156 163 175) !important; /* gray-400 */
+    color: #767676 !important; /* gray-400 */
     opacity: 1 !important;
   }
   
   .dark textarea::placeholder {
-    color: rgb(75 85 99) !important; /* gray-600 - darker gray */
+    color: #989898 !important; /* VS Code Modern placeholder */
     opacity: 1 !important;
   }
   
   /* More specific selector for chat input textarea */
   .dark .bg-gray-800 textarea::placeholder,
   .dark textarea.bg-transparent::placeholder {
-    color: rgb(75 85 99) !important; /* gray-600 - darker gray */
+    color: #989898 !important; /* VS Code Modern placeholder */
     opacity: 1 !important;
-    -webkit-text-fill-color: rgb(75 85 99) !important;
+    -webkit-text-fill-color: #989898 !important;
   }
   
   /* Custom class for chat input placeholder */
   .chat-input-placeholder::placeholder {
-    color: rgb(156 163 175) !important;
+    color: #767676 !important;
     opacity: 1 !important;
   }
 
   .dark .chat-input-placeholder::placeholder {
-    color: rgb(75 85 99) !important;
+    color: #989898 !important;
     opacity: 1 !important;
-    -webkit-text-fill-color: rgb(75 85 99) !important;
+    -webkit-text-fill-color: #989898 !important;
   }
 
   .chat-input-placeholder::-webkit-input-placeholder {
-    color: rgb(156 163 175) !important;
+    color: #767676 !important;
     opacity: 1 !important;
   }
 
   .dark .chat-input-placeholder::-webkit-input-placeholder {
-    color: rgb(75 85 99) !important;
+    color: #989898 !important;
     opacity: 1 !important;
-    -webkit-text-fill-color: rgb(75 85 99) !important;
+    -webkit-text-fill-color: #989898 !important;
   }
   
   /* WebKit specific placeholder styles */
   textarea::-webkit-input-placeholder {
-    color: rgb(156 163 175) !important;
+    color: #767676 !important;
     opacity: 1 !important;
   }
   
   .dark textarea::-webkit-input-placeholder {
-    color: rgb(75 85 99) !important; /* gray-600 - darker gray */
+    color: #989898 !important; /* VS Code Modern placeholder */
     opacity: 1 !important;
   }
   
   /* Mozilla specific placeholder styles */
   textarea::-moz-placeholder {
-    color: rgb(156 163 175) !important;
+    color: #767676 !important;
     opacity: 1 !important;
   }
   
   .dark textarea::-moz-placeholder {
-    color: rgb(75 85 99) !important; /* gray-600 - darker gray */
+    color: #989898 !important; /* VS Code Modern placeholder */
     opacity: 1 !important;
   }
   
   /* IE/Edge specific placeholder styles */
   textarea:-ms-input-placeholder {
-    color: rgb(156 163 175) !important;
+    color: #767676 !important;
     opacity: 1 !important;
   }
   
   .dark textarea:-ms-input-placeholder {
-    color: rgb(75 85 99) !important; /* gray-600 - darker gray */
+    color: #989898 !important; /* VS Code Modern placeholder */
     opacity: 1 !important;
   }
 }

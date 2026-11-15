@@ -306,7 +306,7 @@ function SidebarProjectItem({
         <Button
           variant="ghost"
           className={cn(
-            'sticky top-0 z-10 flex w-full justify-between p-2 h-auto font-normal hover:bg-accent/50',
+            'sticky top-0 z-10 flex h-8 w-full justify-between rounded-none px-2 py-1 font-normal hover:bg-accent/50',
             isSelected
               ? 'bg-accent text-accent-foreground'
               : isStarred

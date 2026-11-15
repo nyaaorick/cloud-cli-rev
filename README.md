@@ -2,11 +2,19 @@
 
 [源码仓库](https://github.com/nyaaorick/cloud-cli-rev) · [问题反馈](https://github.com/nyaaorick/cloud-cli-rev/issues)
 
-独立维护的 CloudCLI UI 派生版本，供后续开发、问题追踪和版本管理使用。当前维护版本为 `1.37.8-rev.5`。
+独立维护的 CloudCLI UI 派生版本，供后续开发、问题追踪和版本管理使用。当前源码版本为 `1.37.8-rev.6`（发布准备中）。
 
 **上游来源：CloudCLI UI (https://github.com/siteboon/claudecodeui)。** 本项目包含修改，不是上游官方发行版，也不代表 Siteboon AI B.V. 对本项目的认可。
 
 沿用 **AGPL-3.0-or-later**，完整保留 [LICENSE](LICENSE) 中的附加条款、[NOTICE](NOTICE) 中的原始署名与历史许可声明，以及上游 Git 历史。上游使用说明保存在 [README.upstream.md](README.upstream.md)。
+
+## rev6 界面
+
+工作台采用 VS Code Modern 的分区、密度和深浅色主题，中央默认保留 Codex 风格对话。
+左侧活动栏集中管理会话、文件和源代码管理入口；文件树与编辑器按需打开，终端位于独立的底部面板。
+顶部命令中心可搜索文件、会话和命令；保留 Cmd/Ctrl+K，并支持 Cmd/Ctrl+Shift+P 与 Cmd/Ctrl+J。
+
+布局调整复用现有原生会话、工具、发送菜单和文件编辑能力。源码发布和线上部署仍分别执行。
 
 ## 维护起点
 

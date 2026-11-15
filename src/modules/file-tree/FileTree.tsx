@@ -26,13 +26,15 @@ import ImageViewer from '@/modules/file-tree/ImageViewer';
 type FileTreeProps = {
   selectedProject: Project | null;
   onFileOpen?: (filePath: string) => void;
+  /** Narrow workbench explorer uses a name-only tree without changing the saved full-page view. */
+  presentation?: 'full' | 'sidebar';
   // Directory to reveal (from an in-chat `path/` reference): its ancestors are
   // expanded so the folder is visible without hunting through the tree.
   revealDirectory?: DirectoryRevealRequest | null;
 };
 
 /** Exported through the file-tree barrel; the project-workspace module renders it as the Files sidebar tab. */
-export default function FileTree({ selectedProject, onFileOpen, revealDirectory }: FileTreeProps) {
+export default function FileTree({ selectedProject, onFileOpen, revealDirectory, presentation = 'full' }: FileTreeProps) {
   const { t } = useTranslation();
   const [selectedImage, setSelectedImage] = useState<FileTreeImageSelection | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -53,7 +55,8 @@ export default function FileTree({ selectedProject, onFileOpen, revealDirectory 
   }, [toast]);
 
   const { files, loading, error, refreshFiles } = useFileTreeData(selectedProject);
-  const { viewMode, changeViewMode } = useFileTreeViewMode();
+  const { viewMode: savedViewMode, changeViewMode } = useFileTreeViewMode();
+  const viewMode = presentation === 'sidebar' ? 'simple' : savedViewMode;
   const { expandedDirs, toggleDirectory, expandDirectories, collapseAll } = useExpandedDirectories();
   const { searchQuery, setSearchQuery, filteredFiles } = useFileTreeSearch({
     files,
@@ -176,7 +179,7 @@ export default function FileTree({ selectedProject, onFileOpen, revealDirectory 
   return (
     <div
       ref={treeRef}
-      className="relative flex h-full flex-col bg-background"
+      className={cn('relative flex h-full min-w-0 flex-col', presentation === 'sidebar' ? 'bg-transparent' : 'bg-background')}
       onDragEnter={upload.handleDragEnter}
       onDragOver={upload.handleDragOver}
       onDragLeave={upload.handleDragLeave}
@@ -210,6 +213,7 @@ export default function FileTree({ selectedProject, onFileOpen, revealDirectory 
       )}
 
       <FileTreeHeader
+        presentation={presentation}
         viewMode={viewMode}
         onViewModeChange={changeViewMode}
         searchQuery={searchQuery}

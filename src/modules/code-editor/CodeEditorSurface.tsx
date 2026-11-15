@@ -69,6 +69,7 @@ export default function CodeEditorSurface({
 
   return (
     <CodeMirror
+      className="workbench-code-surface"
       onCreateEditor={setView}
       value={content}
       onChange={onChange}

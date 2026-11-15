@@ -186,7 +186,7 @@ export default function SidebarContent({
 
   return (
     <div
-      className="flex h-full flex-col bg-background/80 backdrop-blur-sm md:w-full md:select-none"
+      className="workbench-sidebar flex h-full flex-col md:w-full md:select-none"
       style={{}}
     >
       <SidebarHeader
