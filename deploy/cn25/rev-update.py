@@ -70,6 +70,15 @@ def dependency_fingerprint(lock):
     return hashlib.sha256(json.dumps([root, packages], sort_keys=True).encode()).hexdigest()
 
 
+def runtime_permissions(release):
+    # The root updater uses umask077, but the fixed app runs as cn25-manager.
+    # Do not follow node_modules symlinks into the previous running dependency tree.
+    for path in release.rglob('*'):
+        if not path.is_symlink():
+            path.chmod(0o755 if path.is_dir() or path.stat().st_mode & 0o111 else 0o644)
+    release.chmod(0o755)
+
+
 def health(port):
     with urllib.request.urlopen('http://127.0.0.1:%d/health' % port, timeout=5) as response:
         return json.load(response)
@@ -342,9 +351,7 @@ def main():
         else:
             run([config['node'], config['npmCli'], 'ci', '--omit=dev', '--prefix', str(release)], timeout=1200)
             state['dependencies'] = 'installed from release lockfile'
-        for path in release.rglob('*'):
-            if not path.is_symlink():
-                path.chmod(0o755 if path.is_dir() or path.stat().st_mode & 0o111 else 0o644)
+        runtime_permissions(release)
         marker = release / '.rev-install.json'
         marker.write_text(json.dumps({'schemaVersion': 1, 'repository': REPO, 'version': version,
                                      'updateService': 'cn25-cloudcli-rev-update.service'}) + '\n')

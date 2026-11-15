@@ -1,6 +1,7 @@
 import importlib.util
 import io
 import json
+import os
 from pathlib import Path
 import tarfile
 import tempfile
@@ -13,6 +14,30 @@ SPEC.loader.exec_module(MODULE)
 
 
 class ArchiveBoundaryTests(unittest.TestCase):
+    def test_root_private_umask_becomes_readable_without_touching_live_dependencies(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            previous = base / 'live-dependencies'
+            previous.mkdir()
+            dependency = previous / 'private-mode-unchanged'
+            dependency.write_text('fixture')
+            dependency.chmod(0o600)
+            old_umask = os.umask(0o077)
+            try:
+                release = base / 'release'
+                release.mkdir(mode=0o755)
+                (release / 'dist-server').mkdir()
+                (release / 'dist-server/index.js').write_text('fixture')
+            finally:
+                os.umask(old_umask)
+            self.assertEqual(release.stat().st_mode & 0o777, 0o700)
+            (release / 'node_modules').symlink_to(previous)
+            MODULE.runtime_permissions(release)
+            self.assertEqual(release.stat().st_mode & 0o777, 0o755)
+            self.assertEqual((release / 'dist-server').stat().st_mode & 0o777, 0o755)
+            self.assertEqual((release / 'dist-server/index.js').stat().st_mode & 0o777, 0o644)
+            self.assertEqual(dependency.stat().st_mode & 0o777, 0o600)
+
     def test_rejects_traversal_links_and_devices(self):
         for name, kind in [('../outside', tarfile.REGTYPE), ('/absolute', tarfile.REGTYPE),
                            ('link', tarfile.SYMTYPE), ('hard', tarfile.LNKTYPE), ('device', tarfile.CHRTYPE)]:
