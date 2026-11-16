@@ -1,0 +1,9 @@
+{
+  "version": "2026.11.0",
+  "platform": "linux-amd64",
+  "sha256": "51f7c68b57ed7269164075d7e789efce5b59355982f06392deeb037d982a51fd",
+  "url": "https://github.com/cloudflare/cloudflared/releases/download/2026.11.0/cloudflared-linux-amd64",
+  "sourceUrl": "https://github.com/cloudflare/cloudflared/tree/2026.11.0",
+  "licenseUrl": "https://raw.githubusercontent.com/cloudflare/cloudflared/2026.11.0/LICENSE",
+  "licenseSha256": "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd"
+}

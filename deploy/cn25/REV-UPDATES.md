@@ -61,3 +61,12 @@ Do not delete an attempt to force a retry or replay an unknown result. Inspect
 its exact service override and health first. The updater never replaces itself
 from downloaded code; controller changes are installed separately for review.
 No worker, queue, history, database or credential file is in the rollback set.
+
+Rev7 also publishes a separate pinned Cloudflare offline environment and
+`CLOUDFLARE-SHA256SUMS`; its assets do not change the updater's two-entry app
+checksum format. See [Cloudflare maintenance](cloudflare/README.md). On CN25,
+post-activation completion verifies the new version, adopts the matching
+existing tunnel environment without restarting it, verifies the local
+diagnostics and physical browser, and then removes only explicitly proven duplicate
+artifacts. Failed/unknown attempts remain intact. Existing CLI descendants keep
+the update waiting; the requesting manager is never killed to finish it.

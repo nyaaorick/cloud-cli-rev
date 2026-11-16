@@ -1,6 +1,6 @@
 {
   "name": "cloud-cli-rev",
-  "version": "1.37.8-rev.6",
+  "version": "1.37.8-rev.7",
   "productName": "Cloud Cli rev",
   "description": "An independently maintained AGPL derivative of CloudCLI UI, with CN25 BF manager integration.",
   "type": "module",

@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "uid": 17034,
+  "user": "cn25-cloudflared",
+  "group": "cn25-cloudflared",
+  "interface": "eno1np0",
+  "bindAddress": "192.168.177.25",
+  "originPort": 3302,
+  "metricsPorts": [49312, 49313],
+  "routePriorities": [8988, 8989],
+  "dnsServers": ["1.1.1.1", "9.9.9.9"],
+  "edgeNetworks": ["198.41.192.0/24", "198.41.200.0/24"],
+  "httpsPorts": [443, 8443],
+  "primaryHostname": "cn25.foliodude.it.com",
+  "runtimeDirectory": "/usr/local/libexec/cn25-console-cloudflared",
+  "configFile": "/etc/cn25-console-cloudflared/profile.json",
+  "resolverFile": "/etc/cn25-console-cloudflared/resolv.conf",
+  "tokenFile": "/srv/review/secrets/cn25-console-cloudflared-token",
+  "guardFile": "/etc/cn25-us-egress/guard.nft",
+  "guardLock": "/run/cn25-us-egress-guard.lock",
+  "guardPins": [
+    "/etc/cn25-us-egress/feishu-direct-guard.sha256",
+    "/etc/cn25-us-egress/deepseek-direct-guard.sha256"
+  ],
+  "guardChecks": [
+    "/usr/local/libexec/cn25-feishu-direct/check_guard.py",
+    "/usr/local/libexec/cn25-deepseek-direct/check_guard.py"
+  ],
+  "stateDirectory": "/srv/review/controller/cloudflare-rev7",
+  "ruleCommentPrefix": "CN25 Cloudflare physical only",
+  "anchorComment": "IPv4 loopback services only",
+  "tunnelUnit": "cn25-console-cloudflared.service",
+  "routeUnit": "cn25-cloudflared-direct-route.service",
+  "guardUnit": "cn25-us-egress-guard.service",
+  "appUnit": "cn25-console-rev.service"
+}

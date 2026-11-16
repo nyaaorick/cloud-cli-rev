@@ -1,5 +1,10 @@
 # CN25 CloudCLI first consumer
 
+For an existing Rev installation, use [fixed-service updates](REV-UPDATES.md)
+and the [current physical Cloudflare environment](cloudflare/README.md).
+The first-consumer/VPS procedures below document the original deployment;
+do not replay them against the current named tunnel or an initialized owner.
+
 Upstream: v1.37.8, `2053f3d7a086fd44f7fe373c913da487629b0a95`.
 Retains the upstream AGPL license and Git history.
 

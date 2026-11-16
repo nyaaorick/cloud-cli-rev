@@ -44,4 +44,11 @@ await fs.writeFile(path.join(out, 'release-manifest.json'), JSON.stringify(manif
 const manifestBytes = await fs.readFile(path.join(out, 'release-manifest.json'));
 await fs.writeFile(path.join(out, 'SHA256SUMS'), `${manifest.sha256}  ${archive}\n${createHash('sha256').update(manifestBytes).digest('hex')}  release-manifest.json\n`);
 await fs.rm(stage, { recursive: true, force: true });
+const environmentArgs = ['-B', path.join(root, 'deploy/cn25/cloudflare/bundle.py'), '--output', out];
+const suppliedBinary = process.argv.indexOf('--cloudflared-binary');
+if (suppliedBinary !== -1) {
+  if (!process.argv[suppliedBinary + 1]) throw new Error('Missing cloudflared binary path');
+  environmentArgs.push('--binary', process.argv[suppliedBinary + 1]);
+}
+execFileSync('python3', environmentArgs, { cwd: root, stdio: 'inherit' });
 console.log(JSON.stringify({ version: pkg.version, commit, archive, bytes: bytes.length, sha256: manifest.sha256 }));
