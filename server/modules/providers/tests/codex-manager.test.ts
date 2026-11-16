@@ -4,15 +4,18 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { codexTurnClient } from '../list/codex/codex-turn.client.js';
 import type { ThreadOptions } from '@openai/codex-sdk';
 
-import { codexRuntime } from '../list/codex/codex-runtime.provider.js';
-import { buildManagerCodexShellCommand, codexManagerService } from '../list/codex/codex-manager.service.js';
 import type { ProviderRuntimeContext } from '@/shared/index.js';
 
+import { buildManagerCodexShellCommand, codexManagerService } from '../list/codex/codex-manager.service.js';
+import { CodexProviderModels } from '../list/codex/codex-models.provider.js';
+import { codexRuntime } from '../list/codex/codex-runtime.provider.js';
+import { codexTurnClient } from '../list/codex/codex-turn.client.js';
+import { providerCapabilitiesService } from '../services/provider-capabilities.service.js';
+
 for (const resumed of [false, true]) {
-  test(`manager ${resumed ? 'resume' : 'new'} ignores browser and worker model/permission defaults`, async (t) => {
+  test(`manager ${resumed ? 'resume' : 'new'} honors selected model and effort while retaining its identity and permissions`, async (t) => {
     const home = mkdtempSync(path.join(os.tmpdir(), 'cloudcli-manager-'));
     writeFileSync(path.join(home, 'config.toml'), `model = "gpt-6.1-sol"
 model_provider = "bifrost"
@@ -46,24 +49,52 @@ requires_openai_auth = false
       config = profile?.config;
       return thread;
     });
+    const selectedModel = resumed ? 'gpt-6-astra' : 'gpt-6.1-terra';
+    const selectedEffort = resumed ? 'low' : 'ultra';
+    const capabilities = providerCapabilitiesService.getProviderCapabilities('codex');
+    for (const effort of ['low', 'medium', 'high', 'xhigh', 'max', 'ultra']) {
+      assert.ok(capabilities.effortLevels.includes(effort), `manager capability must allow ${effort}`);
+    }
+    assert.deepEqual(capabilities.permissionModes, ['bypassPermissions']);
+    const models = new CodexProviderModels();
+    const catalog = await models.getSupportedModels();
+    for (const model of ['gpt-6-astra', 'gpt-6.1-sol', 'gpt-6.1-terra']) {
+      assert.deepEqual(catalog.OPTIONS.find((option) => option.value === model)?.effort?.values.map((value) => value.value),
+        ['low', 'medium', 'high', 'xhigh', 'max', 'ultra']);
+    }
     const context: ProviderRuntimeContext = {
       resolveProviderSessionId: () => resumed ? 'native-manager' : null,
-      resolveResumeModel: async () => 'worker-model',
-      getProviderModels: async () => ({ OPTIONS: [], DEFAULT: 'worker-model' }),
+      resolveResumeModel: async () => 'gpt-6.1-sol',
+      getProviderModels: () => models.getSupportedModels(),
       normalizeMessage: () => [],
       isProviderInstalled: async () => true,
     };
-    await codexRuntime.run('identify', { sessionId: resumed ? 'app-manager' : undefined, cwd: home, model: 'worker-model', effort: 'low', permissionMode: 'default' }, { isWebSocketWriter: true, send() {} }, context);
+    await codexRuntime.run('identify', { sessionId: resumed ? 'app-manager' : undefined, cwd: home, model: selectedModel, effort: selectedEffort, permissionMode: 'default' }, { isWebSocketWriter: true, send() {} }, context);
     assert.equal(executable, '/fixed/native/codex');
     assert.equal(buildManagerCodexShellCommand(resumed ? 'native-manager' : ''), resumed ? "'/fixed/native/codex' --no-daemon resume 'native-manager'" : "'/fixed/native/codex' --no-daemon");
-    assert.equal(captured?.model, 'gpt-6.1-sol');
-    assert.equal(captured?.modelReasoningEffort, 'xhigh');
+    assert.equal(captured?.model, selectedModel);
+    assert.equal(captured?.modelReasoningEffort, selectedEffort);
     assert.equal(captured?.sandboxMode, 'danger-full-access');
     assert.equal(captured?.approvalPolicy, 'never');
     assert.equal(config?.model_provider, 'bifrost');
+    assert.equal(config?.model, undefined, 'manager overrides must not replace the selected model');
+    assert.equal(config?.model_reasoning_effort, undefined, 'manager overrides must not replace the selected effort');
     assert.match(String(config?.developer_instructions), /CN25.*大管理/);
     assert.equal(config?.model_providers?.bifrost?.env_key, 'CODEX_GATEWAY_API_KEY');
     assert.ok(!JSON.stringify(config).includes('test-only-not-a-credential'));
+    const configurableProfile = String.raw`model = "gpt-6.1-terra"
+model_reasoning_effort = "ultra"
+` + String.raw`model_provider = "bifrost"
+approval_policy = "never"
+sandbox_mode = "danger-full-access"
+developer_instructions = "你是 CN25 审查机的大管理。"
+[model_providers.bifrost]
+base_url = "https://example.invalid/v1"
+env_key = "CODEX_GATEWAY_API_KEY"
+wire_api = "responses"
+`;
+    writeFileSync(path.join(home, 'config.toml'), configurableProfile);
+    assert.equal(codexManagerService.getProfile()?.model, 'gpt-6.1-terra');
     delete process.env.CODEX_GATEWAY_API_KEY;
     assert.throws(() => codexManagerService.getProfile(), /no fallback/);
     process.env.CODEX_GATEWAY_API_KEY = 'test-only-not-a-credential';

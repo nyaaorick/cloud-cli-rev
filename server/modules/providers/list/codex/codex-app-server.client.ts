@@ -518,7 +518,7 @@ export const codexAppServer = {
           return call('thread/fork', {
             threadId: input.threadId,
             ...(input.cwd ? { cwd: input.cwd } : {}),
-            ...(codexManagerService.getProfile() ? { model: 'gpt-6.1-sol' } : input.model ? { model: input.model } : {}),
+            ...(input.model ? { model: input.model } : {}),
             ephemeral: true,
             sandbox: 'read-only',
             approvalPolicy: 'never',

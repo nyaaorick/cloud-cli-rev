@@ -171,8 +171,9 @@ export class CodexProviderModels implements IProviderModels {
     const manager = codexManagerService.getProfile();
     if (manager) return {
       DEFAULT: manager.model,
-      OPTIONS: CODEX_PREDEFINED_MODELS.OPTIONS.filter((option) => option.value === manager.model)
-        .map((option) => ({ ...option, effort: { default: manager.effort, values: [{ value: manager.effort }] } })),
+      OPTIONS: CODEX_PREDEFINED_MODELS.OPTIONS.map((option) => option.value === manager.model
+        && option.effort?.values.some((effort) => effort.value === manager.effort)
+        ? { ...option, effort: { ...option.effort, default: manager.effort } } : option),
     };
     return CODEX_PREDEFINED_MODELS;
   }

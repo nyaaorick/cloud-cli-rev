@@ -244,6 +244,36 @@ test('the fork is ephemeral, read-only and carries the side-conversation instruc
   });
 });
 
+test('manager side questions retain the selected model instead of forcing Sol', { concurrency: false }, async (t) => {
+  await withFakeAppServer('complete', async ({ dir, received }) => {
+    const managerCli = path.join(dir, 'manager-cli');
+    await writeFile(managerCli, `#!${process.execPath}\nrequire(${JSON.stringify(path.join(dir, 'fake-app-server.cjs'))});\n`, { mode: 0o700 });
+    await writeFile(path.join(dir, 'config.toml'), `model = "gpt-6.1-sol"
+model_provider = "bifrost"
+model_reasoning_effort = "xhigh"
+approval_policy = "never"
+sandbox_mode = "danger-full-access"
+developer_instructions = "你是 CN25 审查机的大管理。"
+[model_providers.bifrost]
+base_url = "https://example.invalid/v1"
+env_key = "CODEX_GATEWAY_API_KEY"
+wire_api = "responses"
+`);
+    const names = ['CN25_MANAGER_MODE', 'CN25_MANAGER_CODEX_PATH', 'CODEX_HOME', 'CODEX_GATEWAY_API_KEY'];
+    const previous = names.map((name) => process.env[name]);
+    Object.assign(process.env, { CN25_MANAGER_MODE: '1', CN25_MANAGER_CODEX_PATH: managerCli, CODEX_HOME: dir, CODEX_GATEWAY_API_KEY: 'test-only-not-a-credential' });
+    t.after(() => names.forEach((name, i) => {
+      if (previous[i] === undefined) delete process.env[name]; else process.env[name] = previous[i];
+    }));
+    await appServer.askSideQuestion!(askInput({ model: 'gpt-6.1-terra' }), () => {});
+    const fork = (await received()).find((line) => line.method === 'thread/fork');
+    assert.equal(fork?.params.model, 'gpt-6.1-terra');
+    assert.equal(fork?.params.config.model, undefined);
+    assert.equal(fork?.params.config.model_reasoning_effort, undefined);
+    assert.match(fork?.params.developerInstructions, /CN25.*大管理/);
+  });
+});
+
 test('the fork disables every MCP server config/read names, by name, instead of replacing the table', { concurrency: false }, async () => {
   // Measured against the real 0.156.1 binary (codex-read-only-tools): a
   // `config` override of `{ mcp_servers: {} }` on `thread/fork` is a no-op —

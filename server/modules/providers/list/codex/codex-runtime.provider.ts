@@ -285,16 +285,18 @@ async function queryCodex(
   const providerSessionId = context.resolveProviderSessionId(sessionId);
 
   const manager = codexManagerService.getProfile();
-  const resolvedModel = manager?.model || await context.resolveResumeModel(sessionId, model);
+  const resolvedModel = manager
+    ? model || await context.resolveResumeModel(sessionId) || manager.model
+    : await context.resolveResumeModel(sessionId, model);
 
   const workingDirectory = cwd || projectPath || process.cwd();
   const { sandboxMode, approvalPolicy } = mapPermissionModeToCodexOptions(manager ? 'bypassPermissions' : permissionMode);
   const catalog = await context.getProviderModels();
   const selectedModel = catalog.OPTIONS.find((option) => option.value === resolvedModel) || null;
   const allowedEfforts = selectedModel?.effort?.values?.map((value) => value.value) || [];
-  const resolvedEffort = manager?.effort || (typeof effort === 'string' && effort !== 'default' && allowedEfforts.includes(effort)
+  const resolvedEffort = typeof effort === 'string' && effort !== 'default' && allowedEfforts.includes(effort)
     ? effort as ModelReasoningEffort
-    : undefined);
+    : undefined;
 
   let thread: ReturnType<typeof codexTurnClient.createThread>;
   // Provider-native thread id (starts as the resume id, or is captured from

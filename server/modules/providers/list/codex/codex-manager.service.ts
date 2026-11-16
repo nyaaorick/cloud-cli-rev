@@ -5,7 +5,7 @@ import path from 'node:path';
 import TOML from '@iarna/toml';
 import type { CodexOptions } from '@openai/codex-sdk';
 
-import { readObjectRecord } from '@/shared/utils.js';
+import { readObjectRecord, readOptionalString } from '@/shared/utils.js';
 
 function getProfile() {
   if (process.env.CN25_MANAGER_MODE !== '1') return null;
@@ -18,8 +18,7 @@ function getProfile() {
   const providers = readObjectRecord(profile?.model_providers);
   const bf = readObjectRecord(providers?.bifrost);
   const role = profile?.developer_instructions;
-  if (profile?.model !== 'gpt-6.1-sol' || profile?.model_provider !== 'bifrost'
-    || profile?.model_reasoning_effort !== 'xhigh' || profile?.approval_policy !== 'never'
+  if (profile?.model_provider !== 'bifrost' || profile?.approval_policy !== 'never'
     || profile?.sandbox_mode !== 'danger-full-access' || typeof role !== 'string'
     || !role.includes('CN25') || !role.includes('大管理')
     || bf?.wire_api !== 'responses' || bf?.env_key !== 'CODEX_GATEWAY_API_KEY'
@@ -30,14 +29,15 @@ function getProfile() {
   // Select only non-secret settings. SDK serializes these into CLI arguments;
   // authentication stays exclusively in PID1's inherited environment.
   const config = {
-    model: 'gpt-6.1-sol', model_provider: 'bifrost', model_reasoning_effort: 'xhigh',
+    model_provider: 'bifrost',
     approval_policy: 'never', sandbox_mode: 'danger-full-access', developer_instructions: role,
     model_providers: { bifrost: {
       name: 'Bifrost', base_url: bf.base_url, env_key: 'CODEX_GATEWAY_API_KEY',
       wire_api: 'responses', requires_openai_auth: false,
     } },
   } satisfies NonNullable<CodexOptions['config']>;
-  return { cliPath, model: 'gpt-6.1-sol', effort: 'xhigh' as const, config };
+  return { cliPath, model: readOptionalString(profile?.model) || 'gpt-6.1-sol',
+    effort: readOptionalString(profile?.model_reasoning_effort) || 'xhigh', config };
 }
 
 let readiness: { key: string; expires: number; result: Promise<boolean> } | null = null;
