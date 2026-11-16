@@ -5,8 +5,6 @@ import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-import { Codex } from '@openai/codex-sdk';
-import type { Thread } from '@openai/codex-sdk';
 import type { WebSocket } from 'ws';
 
 import {
@@ -25,6 +23,7 @@ import {
   queryClaudeSDK,
 } from '@/modules/providers/list/claude/claude-runtime.provider.js';
 import { codexRuntime } from '@/modules/providers/list/codex/codex-runtime.provider.js';
+import { codexTurnClient } from '@/modules/providers/list/codex/codex-turn.client.js';
 import { cursorRuntime } from '@/modules/providers/list/cursor/cursor-runtime.provider.js';
 import { opencodeRuntime } from '@/modules/providers/list/opencode/opencode-runtime.provider.js';
 import type { ProviderRuntimeContext } from '@/shared/index.js';
@@ -262,7 +261,7 @@ test('opencode: a turn whose server dies is still reported as failed', async () 
 });
 
 /** A Codex thread whose stream starts, then waits for the abort signal and ends the way `mode` says. */
-function createAbortableThread(mode: 'throws' | 'yields'): Thread {
+function createAbortableThread(mode: 'throws' | 'yields'): ReturnType<typeof codexTurnClient.createThread> {
   return {
     id: 'codex-native-1',
     async runStreamed(_input: unknown, options?: { signal?: AbortSignal }) {
@@ -286,13 +285,13 @@ function createAbortableThread(mode: 'throws' | 'yields'): Thread {
         })(),
       };
     },
-  } as unknown as Thread;
+  } as unknown as ReturnType<typeof codexTurnClient.createThread>;
 }
 
 for (const mode of ['throws', 'yields'] as const) {
   test(`codex: a cancelled run is reported as stopped/aborted (stream ${mode} after abort)`, async (t) => {
     await withDesktopListener(async ({ userId, payloads }) => {
-      t.mock.method(Codex.prototype, 'startThread', () => createAbortableThread(mode));
+      t.mock.method(codexTurnClient, 'createThread', () => createAbortableThread(mode));
       const sessionId = `codex-abort-session-${mode}`;
       const writer = createWriter(userId);
 
@@ -310,29 +309,31 @@ for (const mode of ['throws', 'yields'] as const) {
   });
 }
 
-test('codex: an error that only mentions "aborted", with no user abort, is not reported as a cancellation', async (t) => {
+for (const errorName of ['Error', 'AbortError']) {
+test(`codex: upstream ${errorName} mentioning "aborted" without a user abort reports failure`, async (t) => {
   await withDesktopListener(async ({ userId, payloads }) => {
-    t.mock.method(Codex.prototype, 'startThread', () => ({
+    t.mock.method(codexTurnClient, 'createThread', () => ({
       id: 'codex-native-2',
       async runStreamed() {
         return {
           events: (async function* () {
             yield { type: 'thread.started', thread_id: 'codex-native-2' };
-            throw new Error('stream aborted by the upstream proxy');
+            throw Object.assign(new Error('stream aborted by the upstream proxy'), { name: errorName });
           })(),
         };
       },
-    }) as unknown as Thread);
+    }) as unknown as ReturnType<typeof codexTurnClient.createThread>);
     const writer = createWriter(userId);
 
     await codexRuntime.run('hello', { sessionId: 'codex-not-aborted', cwd: process.cwd() }, writer, runtimeContext).catch(() => {});
 
-    assert.ok(
-      !payloads.some((payload) => payload.data.code === 'run.stopped'),
+    assert.deepEqual(
+      payloads.map((payload) => payload.data.code), ['run.failed'],
       `notifications sent: ${JSON.stringify(payloads)}`,
     );
   });
 });
+}
 
 /**
  * A stand-in for the Claude SDK query: it reports the session, then waits.

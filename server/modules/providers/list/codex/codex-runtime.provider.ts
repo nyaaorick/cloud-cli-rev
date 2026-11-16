@@ -482,8 +482,7 @@ async function queryCodex(
     const runError = error instanceof Error ? error : new Error(String(error));
     const wasAborted =
       session?.status === 'aborted' ||
-      runError.name === 'AbortError' ||
-      runError.message.toLowerCase().includes('aborted');
+      abortController.signal.aborted;
 
     if (!wasAborted) {
       console.error('[Codex] Error:', error);
@@ -511,10 +510,9 @@ async function queryCodex(
           error
         });
       }
-    } else if (!terminalFailure && (session?.status === 'aborted' || abortController.signal.aborted)) {
-      // The SDK rethrows the spawn AbortError once the CLI is killed. Only a
-      // real user abort counts; an error that merely mentions "aborted" stays
-      // silent as before.
+    } else if (!terminalFailure) {
+      // Only this run's cancellation state proves a user abort. An upstream
+      // AbortError or an error mentioning "aborted" still reports failure.
       notifyCodexRunAborted();
     }
 

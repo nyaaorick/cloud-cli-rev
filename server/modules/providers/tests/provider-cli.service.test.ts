@@ -94,9 +94,27 @@ async function createFakeCli(dir: string, name: string): Promise<FakeCli> {
   if (process.platform === 'win32') {
     await writeFile(path.join(dir, `${name}.cmd`), `@echo off\r\n"${process.execPath}" "${scriptPath}" %*\r\n`, 'utf8');
   } else {
-    // exec, so a signal sent to the updater reaches the node process itself.
+    // Version probes need no Node runtime. A fresh JS file can take seconds
+    // to start under macOS scanning/load and falsely trip the real 5s probe.
+    // Updaters still exec Node so the process-group/child tests remain real.
     const commandPath = path.join(dir, name);
-    await writeFile(commandPath, `#!/bin/sh\nexec "${process.execPath}" "${scriptPath}" "$@"\n`, 'utf8');
+    const quote = (value: string) => `'${value.replace(/'/g, `'\\''`)}'`;
+    await writeFile(commandPath, `#!/bin/sh
+if [ "$1" = '--version' ]; then
+  state=${quote(stateDir)}
+  count=0
+  if [ -f "$state/version-count" ]; then IFS= read -r count < "$state/version-count" || :; fi
+  printf '%s' "$((count + 1))" > "$state/version-count"
+  version=''
+  if [ -f "$state/version" ]; then IFS= read -r version < "$state/version" || :; fi
+  printf '%s\\n' "$version"
+  if [ -f "$state/lock-after-version" ]; then /bin/chmod 644 "$0"; fi
+  code=0
+  if [ -f "$state/version-exit" ]; then IFS= read -r code < "$state/version-exit" || :; fi
+  exit "$code"
+fi
+exec ${quote(process.execPath)} ${quote(scriptPath)} "$@"
+`, 'utf8');
     await chmod(commandPath, 0o755);
   }
 
@@ -563,16 +581,18 @@ test('updateCli stops an updater that runs past the timeout, and the child it st
     await cursor.set('update-sleep-ms', '2500');
     await cursor.set('update-new-version', '2026.10.09-1a2b3c4\n');
 
-    const startedAt = Date.now();
-    const result = await createService({ updateTimeoutMs: 1000, updateKillGraceMs: 300 }).updateCli('cursor');
+    const updating = createService({ updateTimeoutMs: 1000, updateKillGraceMs: 300 }).updateCli('cursor');
+    await waitForFakeCliFile(cursor, 'child-pid');
+    const updaterStartedAt = Date.now();
+    const result = await withDeadline(updating, 10_000, 'the timed-out updater did not settle');
     assert.equal(result.failure, 'timed_out');
     assert.equal(result.exitCode, null);
     assert.equal(result.installedVersion, '2026.07.20-8cc9c0b');
-    assert.ok(Date.now() - startedAt < 2500, 'the result came from the kill, not from the updater finishing');
     assert.ok(await cursor.read('child-pid'), 'the updater had started its child');
 
-    // Past the point where either would have finished on its own.
-    await delay(Math.max(0, startedAt + 3500 - Date.now()));
+    // Verify the processes really stopped, without counting the unrelated
+    // before/after version probes against the updater's runtime budget.
+    await delay(Math.max(0, updaterStartedAt + 3500 - Date.now()));
     assert.equal(await cursor.read('update-finished'), null, 'the updater was stopped');
     assert.equal(await cursor.read('child-finished'), null, 'its child was stopped with it');
   });

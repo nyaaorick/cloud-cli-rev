@@ -2,7 +2,7 @@
 
 [源码仓库](https://github.com/nyaaorick/cloud-cli-rev) · [问题反馈](https://github.com/nyaaorick/cloud-cli-rev/issues)
 
-独立维护的 CloudCLI UI 派生版本，供后续开发、问题追踪和版本管理使用。当前源码版本为 `1.37.8-rev.6`（发布准备中）。
+独立维护的 CloudCLI UI 派生版本，供后续开发、问题追踪和版本管理使用。当前源码版本为 `1.37.8-rev.6`。
 
 **上游来源：CloudCLI UI (https://github.com/siteboon/claudecodeui)。** 本项目包含修改，不是上游官方发行版，也不代表 Siteboon AI B.V. 对本项目的认可。
 
