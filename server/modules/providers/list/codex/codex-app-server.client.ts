@@ -298,7 +298,7 @@ export const codexAppServer = {
         threadId: input.threadId,
         ...(input.lastTurnId ? { lastTurnId: input.lastTurnId } : {}),
         ...(input.cwd ? { cwd: input.cwd } : {}),
-        ...(manager ? { model: manager.model, approvalPolicy: 'never', sandbox: 'danger-full-access', developerInstructions: manager.config.developer_instructions, config: manager.config } : {}),
+        ...(manager ? { approvalPolicy: 'never', sandbox: 'danger-full-access', developerInstructions: manager.config.developer_instructions, config: manager.config } : {}),
       }) as { thread?: { id?: unknown; path?: unknown } } | undefined;
 
       const threadId = typeof result?.thread?.id === 'string' ? result.thread.id : '';

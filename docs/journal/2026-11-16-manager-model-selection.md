@@ -15,4 +15,6 @@ Validation:
 - Actual manager CLI inference through Bifrost completed successfully with Terra and Astra, using low effort and a bounded no-tool prompt.
 - Independent review, GitHub release CI and post-update browser/native-session evidence are separate delivery checks.
 
+Independent review of the first snapshot found `UNLOCK-B1`: persistent branch/edit forks still sent the configured manager default. The RPC regression failed with Sol in that field; the follow-up removes the override so the native fork inherits its parent model. The affected fork/edit/manager/capability checks passed (38 passed, one unavailable native fixture skipped), and typecheck/server build passed again. The original finding and focused follow-up review are retained in the delivery evidence.
+
 The fix builds on rev.7, including its Cloudflare environment and startup-font changes. It does not migrate the review-machine runtime or alter its queue, workers or publishing policy.

@@ -151,7 +151,9 @@ readline.createInterface({ input: process.stdin }).on('line', (line) => {
       send({ jsonrpc: '2.0', id: message.id, error: { code: -32600, message: 'thread not found: ${PARENT_THREAD}' } });
       return;
     }
-    send({ jsonrpc: '2.0', id: message.id, result: { thread: { id: FORK, path: null, ephemeral: true }, model: 'gpt-5.6', cwd: '/' } });
+    const transcriptPath = message.params?.ephemeral ? null : LOG + '.fork.jsonl';
+    if (transcriptPath) fs.writeFileSync(transcriptPath, '');
+    send({ jsonrpc: '2.0', id: message.id, result: { thread: { id: FORK, path: transcriptPath, ephemeral: !!message.params?.ephemeral }, model: 'gpt-5.6', cwd: '/' } });
   } else if (message.method === 'turn/start') {
     if (MODE === 'server-request') {
       // A server request whose id collides with the pending turn/start id.
@@ -244,7 +246,7 @@ test('the fork is ephemeral, read-only and carries the side-conversation instruc
   });
 });
 
-test('manager side questions retain the selected model instead of forcing Sol', { concurrency: false }, async (t) => {
+test('manager side questions and branch forks retain the selected model instead of forcing Sol', { concurrency: false }, async (t) => {
   await withFakeAppServer('complete', async ({ dir, received }) => {
     const managerCli = path.join(dir, 'manager-cli');
     await writeFile(managerCli, `#!${process.execPath}\nrequire(${JSON.stringify(path.join(dir, 'fake-app-server.cjs'))});\n`, { mode: 0o700 });
@@ -271,6 +273,12 @@ wire_api = "responses"
     assert.equal(fork?.params.config.model, undefined);
     assert.equal(fork?.params.config.model_reasoning_effort, undefined);
     assert.match(fork?.params.developerInstructions, /CN25.*大管理/);
+    await codexAppServer.forkThread({ threadId: PARENT_THREAD, cwd: dir });
+    const branch = (await received()).filter((line) => line.method === 'thread/fork').at(-1);
+    assert.equal(branch?.params.model, undefined, 'a branch must inherit its parent model');
+    assert.equal(branch?.params.config.model, undefined);
+    assert.equal(branch?.params.config.model_reasoning_effort, undefined);
+    assert.match(branch?.params.developerInstructions, /CN25.*大管理/);
   });
 });
 
