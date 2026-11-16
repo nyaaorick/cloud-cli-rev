@@ -2,7 +2,7 @@
 author: nyaaorick
 progress:
   - date: 2026-11-15
-    text: "修复 rev6 发布前的后端失败；相关 36 项回归已通过，全套发布检查与独立审查进行中。"
+    text: "rev6 发布检查通过：后端 1026 通过/4 跳过、前端 1142 通过、部署 Python 18 通过；独立审查 37/37，无待修发现。"
 ---
 
 # rev6 失败修复与发布
@@ -28,6 +28,16 @@ Path: 修复失败后发布 → Shortest: 修正真实 Codex 错误分类和失�
 
 ## 发布记录
 
-全套后端/前端、Python 部署测试、类型检查、lint、管理模式 build 与独立审查结果将在最终提交补齐。由 GitHub tag workflow 单独发布，避免双发布者。
+本地发布检查结果：
+
+- 后端 `npm test`：1030 项，1026 通过、0 失败、4 项既有平台跳过。
+- 前端 `npm run test:client`：156 文件、1142 项通过。
+- Python 部署测试：18 项通过。
+- `npm run typecheck`、`npm run lint`、`VITE_CN25_MANAGER_MODE=1 npm run build` 均退出 0；lint 与打包体积警告仍保留，不放宽现有检查。
+- 全量首轮遇到一次 Node 测试进程通信的反序列化异常；相关 Agent 测试单独复验和完整后端重跑均通过。新增两项错误用例最初复用同一 sessionId，触发桌面通知去重；已使用独立 sessionId，生产去重逻辑不变。
+
+独立审查 `6578091b..a14d627e` 通过：Critical/Important/Minor 均无；审查者重跑 37 项全部通过，并实测含单引号、空格和 `$()` 的路径可以正确执行版本探测与更新。Windows 夹具分支未改，当前 Mac 未执行 Windows 实机验证。UI 使用上一轮独立审查及主代理修复复验记录，未重复扩大审查。
+
+由 GitHub tag workflow 单独发布，避免双发布者；需要该 workflow 自身全部通过并确认 assets/manifest 后才报告发布成功。发行地址为 `https://github.com/nyaaorick/cloud-cli-rev/releases/tag/v1.37.8-rev.6`，线上服务仍单独部署。
 
 原始失败和诊断日志保留在工作区 `.claude/scratchpad/cloud-cli-rev6/publish-*.log`，发布检查使用 `release-*.log`。
