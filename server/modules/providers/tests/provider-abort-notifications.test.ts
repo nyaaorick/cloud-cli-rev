@@ -325,7 +325,7 @@ test(`codex: upstream ${errorName} mentioning "aborted" without a user abort rep
     }) as unknown as ReturnType<typeof codexTurnClient.createThread>);
     const writer = createWriter(userId);
 
-    await codexRuntime.run('hello', { sessionId: 'codex-not-aborted', cwd: process.cwd() }, writer, runtimeContext).catch(() => {});
+    await codexRuntime.run('hello', { sessionId: `codex-not-aborted-${errorName}`, cwd: process.cwd() }, writer, runtimeContext).catch(() => {});
 
     assert.deepEqual(
       payloads.map((payload) => payload.data.code), ['run.failed'],
