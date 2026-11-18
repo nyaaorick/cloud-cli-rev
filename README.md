@@ -2,7 +2,7 @@
 
 [源码仓库](https://github.com/nyaaorick/cloud-cli-rev) · [问题反馈](https://github.com/nyaaorick/cloud-cli-rev/issues)
 
-独立维护的 CloudCLI UI 派生版本，供后续开发、问题追踪和版本管理使用。当前源码版本为 `1.37.8-rev.7`。
+独立维护的 CloudCLI UI 派生版本，供后续开发、问题追踪和版本管理使用。当前源码版本为 `1.37.8-rev.9`。
 
 **上游来源：CloudCLI UI (https://github.com/siteboon/claudecodeui)。** 本项目包含修改，不是上游官方发行版，也不代表 Siteboon AI B.V. 对本项目的认可。
 
@@ -22,6 +22,7 @@
 - 已验收 CN25 集成起点：`dede74da12c13c10ea7ae033c6681501cee447ac`。
 - 保留网页聊天、原生工具、会话续接、文件预览、终端和单 owner 登录等上游能力。
 - CN25 管理模式保留原生 Codex CLI、Bifrost provider 和管理身份；模型与思考深度可自由选择，配置中的 `gpt-6.1-sol` / `xhigh` 仅作为默认值；权限配置由服务端校验。
+- Rev 9 增加 GPT-6.2 Astra 与 GPT-6.2 Sol。CN25 管理模式需要将独立的原生 CLI 升级到 0.170.0 并验证 Bifrost 的模型可用性。
 - 此次仓库独立化包含项目名称、包元数据、文档及发布配置调整；线上已验收 release 与此源码版本分别记录。
 
 ## 从源码运行

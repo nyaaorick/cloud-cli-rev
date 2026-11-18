@@ -45,6 +45,15 @@ CLI that remains open postpones it, including the manager requesting the update.
 The update API reports **queued**, never falsely reports an installed version.
 An update may remain waiting until that CLI exits after its final answer.
 
+Rev 9 bundles Codex 0.170.0 and lists GPT-6.2 Astra and Sol. CN25 manager
+mode uses the separate root-owned executable set by `CN25_MANAGER_CODEX_PATH`.
+Before activating the app, stage the verified Linux Codex 0.170.0 toolchain in
+a new immutable directory and confirm both slugs in `codex debug models --bundled`.
+At the guarded idle cutover, point the Rev unit's manager CLI and toolchain
+`PATH` at that directory. Preserve the previous override and executable for
+rollback. Confirm a native Bifrost turn using each model and read back the actual
+model from the turn. A catalog entry alone does not verify gateway access.
+
 The root-owned controller and nonsecret `config.json` live under
 `/srv/review/controller/cloudcli-rev-updates/`. Configuration names the canonical
 repository, absolute Node/npm paths, releases directory, fixed service/port,

@@ -49,7 +49,7 @@ requires_openai_auth = false
       config = profile?.config;
       return thread;
     });
-    const selectedModel = resumed ? 'gpt-6-astra' : 'gpt-6.1-terra';
+    const selectedModel = resumed ? 'gpt-6.2-astra' : 'gpt-6.2-sol';
     const selectedEffort = resumed ? 'low' : 'ultra';
     const capabilities = providerCapabilitiesService.getProviderCapabilities('codex');
     for (const effort of ['low', 'medium', 'high', 'xhigh', 'max', 'ultra']) {
@@ -58,7 +58,7 @@ requires_openai_auth = false
     assert.deepEqual(capabilities.permissionModes, ['bypassPermissions']);
     const models = new CodexProviderModels();
     const catalog = await models.getSupportedModels();
-    for (const model of ['gpt-6-astra', 'gpt-6.1-sol', 'gpt-6.1-terra']) {
+    for (const model of ['gpt-6.2-astra', 'gpt-6.2-sol', 'gpt-6-astra', 'gpt-6.1-sol', 'gpt-6.1-terra']) {
       assert.deepEqual(catalog.OPTIONS.find((option) => option.value === model)?.effort?.values.map((value) => value.value),
         ['low', 'medium', 'high', 'xhigh', 'max', 'ultra']);
     }
