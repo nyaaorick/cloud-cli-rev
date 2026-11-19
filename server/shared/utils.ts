@@ -103,7 +103,13 @@ export function applyCn25ClaudeApiOnly(options: AnyRecord, { fullAccess = false 
     model,
     effort: 'xhigh',
     pathToClaudeCodeExecutable: '/usr/local/libexec/cn25-claude-code/manager-launch',
-    env: { CLAUDE_CODE_ENTRYPOINT: 'claudecodeui' },
+    // Only the app's own non-secret runtime knobs; the launcher sets the rest.
+    env: {
+      CLAUDE_CODE_ENTRYPOINT: 'claudecodeui',
+      ...Object.fromEntries(['CLAUDE_CODE_ARTIFACT', 'CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS']
+        .filter((name) => typeof options.env?.[name] === 'string')
+        .map((name) => [name, options.env[name]])),
+    },
     settingSources: [],
     strictMcpConfig: true,
     extraArgs: { ...options.extraArgs, bare: null, 'disable-slash-commands': null },

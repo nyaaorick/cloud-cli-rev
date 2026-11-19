@@ -3,8 +3,9 @@
 The CN25 manager runs Claude Code through CloudCLI with `CN25_CLAUDE_API_ONLY=1`.
 
 - `relay.py` (`cn25-claude-relay.service`, root): the only reader of the Bifrost key. One Unix socket per role in
-  `/run/cn25-claude/`, owned by that role's account. Forwards only `POST /v1/messages` with the role's pinned model
-  and effort (or none) to `https://hubs.foliodude.it.com:8443/anthropic/v1/messages`. Logs policy facts only.
+  `/run/cn25-claude/`, owned by that role's account. Forwards only `POST /v1/messages` naming the role's pinned
+  model to `https://hubs.foliodude.it.com:8443/anthropic/v1/messages`, re-serialized from a strict parse (ambiguous
+  keys and gateway routing fields are refused) and with the role's effort set on every request. Logs policy facts only.
 - `launch.py`, installed as `/usr/local/libexec/cn25-claude-code/<role>-launch`: starts the fixed CLI `--bare` with
   a fixed environment and a placeholder key, bridging a loopback port that only its own account may use to the
   role's socket. No relay, no session. Account and installer subcommands are refused.

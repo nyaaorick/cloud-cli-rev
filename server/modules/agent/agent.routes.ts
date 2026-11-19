@@ -925,6 +925,9 @@ export function createAgentRouter(dependencies: AgentRouterDependencies): expres
       }
     }
     const provider = sessionRow?.provider ?? requestedProvider ?? 'claude';
+    if (process.env.CN25_CLAUDE_API_ONLY === '1' && provider !== 'claude') {
+      return res.status(400).json({ error: 'This host serves the claude provider only' });
+    }
 
     let finalProjectPath = null;
     let clonedProjectCreated = false;

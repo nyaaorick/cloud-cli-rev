@@ -7,6 +7,7 @@ to the role's relay socket; the relay holds the Bifrost key and pins model
 and effort. The CLI gets a placeholder key and a fixed environment, never the
 caller's. Account and installer subcommands are refused.
 """
+import ctypes
 import os
 import pwd
 import signal
@@ -19,13 +20,15 @@ BINARY = '/usr/local/libexec/cn25-claude-code/2.1.311/claude'
 RUN_DIR = '/run/cn25-claude'
 ROLES = {
     'manager': {'model': 'openai/gpt-6.2-sol',
-                'path': '/srv/review/tools/node-v22.23.4-linux-x64/bin:/usr/local/bin:/usr/bin:/bin'},
+                'path': '/srv/review/tools/node-v22.23.4-linux-x64/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'},
     'worker': {'model': 'deepseek/deepseek-flash',
                'path': '/srv/review/tools/node-v22.23.4-linux-x64/bin:/usr/local/bin:/usr/bin:/bin'},
 }
 REFUSED = frozenset(('auth', 'login', 'logout', 'setup-token', 'update', 'upgrade', 'install',
                      'migrate-installer', 'doctor', 'mcp', 'plugin', 'plugins', 'remote-control'))
-PASSED = ('CLAUDE_CODE_ENTRYPOINT', 'CLAUDE_AGENT_SDK_VERSION', 'TERM', 'LANG', 'TZ')
+PASSED = ('CLAUDE_CODE_ENTRYPOINT', 'CLAUDE_AGENT_SDK_VERSION', 'CLAUDE_CODE_ARTIFACT',
+          'CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS', 'TERM', 'LANG', 'TZ')
+PR_SET_PDEATHSIG = 1
 # Review checkouts belong to another account; git needs them marked safe.
 SAFE_DIRECTORY_ROOTS = ('/srv/review/wt/', '/srv/review/codex-home/workspace/')
 PLACEHOLDER_KEY = 'cn25-relay-placeholder'
@@ -77,7 +80,7 @@ def build_env(role, port, environ, account):
 
 
 def peer_uid(client_port, server_port, table='/proc/net/tcp'):
-    """UID owning the loopback client end of a connection to server_port."""
+    """UID owning the 127.0.0.1:client_port end of a connection to server_port."""
     local, remote = '0100007F:%04X' % client_port, '0100007F:%04X' % server_port
     with open(table) as handle:
         next(handle)
@@ -106,8 +109,11 @@ def pump(source, target):
 
 def bridge(client, server_port, relay_path):
     with client:
-        # Only this account's processes may use the bridge.
-        if peer_uid(client.getpeername()[1], server_port) != os.getuid():
+        # Only this account's processes may use the bridge. The peer must be
+        # 127.0.0.1 itself: a lookup by port alone would match another
+        # account's 127.0.0.x connection that reuses a live port number.
+        host, port = client.getpeername()[:2]
+        if host != '127.0.0.1' or peer_uid(port, server_port) != os.getuid():
             return
         with socket.socket(socket.AF_UNIX) as relay:
             try:
@@ -125,6 +131,13 @@ def serve(listener, relay_path):
     while True:
         client, _ = listener.accept()
         threading.Thread(target=bridge, args=(client, port, relay_path), daemon=True).start()
+
+
+def die_with_parent(parent):
+    # The CLI must never outlive its launcher and bridge, even after SIGKILL.
+    ctypes.CDLL(None, use_errno=True).prctl(PR_SET_PDEATHSIG, signal.SIGTERM)
+    if os.getppid() != parent:
+        os._exit(EX_UNAVAILABLE)
 
 
 def main(argv):
@@ -147,11 +160,22 @@ def main(argv):
     listener = socket.socket()
     listener.bind(('127.0.0.1', 0))
     listener.listen(64)
-    threading.Thread(target=serve, args=(listener, relay_path), daemon=True).start()
     env = build_env(role, listener.getsockname()[1], os.environ, account)
-    child = subprocess.Popen(command, env=env)
+    started = []
+
+    def relay_signal(received, _frame):
+        if not started:
+            os._exit(128 + received)
+        started[0].send_signal(received)
+
     for number in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP, signal.SIGQUIT):
-        signal.signal(number, lambda received, _frame: child.send_signal(received))
+        signal.signal(number, relay_signal)
+    parent = os.getpid()
+    # No thread runs yet, so the pre-exec hook is safe; connections queue in
+    # the listen backlog until the bridge starts.
+    child = subprocess.Popen(command, env=env, preexec_fn=lambda: die_with_parent(parent))
+    started.append(child)
+    threading.Thread(target=serve, args=(listener, relay_path), daemon=True).start()
     code = child.wait()
     return 128 - code if code < 0 else code
 

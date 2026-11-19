@@ -34,7 +34,7 @@ class PolicyTests(unittest.TestCase):
         self.assertIsNone(relay.policy(MANAGER, '/v1/messages', {'model': 'openai/gpt-6.2-sol'}))
         refused = [
             ('/v1/messages', {'model': 'claude-opus-5-5', 'output_config': {'effort': 'xhigh'}}),
-            ('/v1/messages', {'model': 'openai/gpt-6.2-sol', 'output_config': {'effort': 'low'}}),
+            ('/v1/messages', {'model': 'openai/gpt-6.2-sol', 'output_config': 'xhigh'}),
             ('/v1/messages/count_tokens', body),
             ('/v1/models', body),
             ('http://elsewhere.invalid/v1/messages', body),
@@ -43,6 +43,28 @@ class PolicyTests(unittest.TestCase):
         ]
         for target, data in refused:
             self.assertIsNotNone(relay.policy(MANAGER, target, data), target)
+
+    def test_every_forwarded_request_carries_the_pinned_effort(self):
+        for output in (None, {}, {'effort': 'low'}, {'effort': 'xhigh', 'format': {'type': 'json'}}):
+            data = {'model': 'openai/gpt-6.2-sol'}
+            if output is not None:
+                data['output_config'] = dict(output)
+            requested = relay.pin_effort(MANAGER, data)
+            self.assertEqual(data['output_config']['effort'], 'xhigh')
+            self.assertEqual(requested, (output or {}).get('effort'))
+        data = {'model': 'openai/gpt-6.2-sol', 'output_config': {'effort': 'low', 'format': {'type': 'json'}}}
+        relay.pin_effort(MANAGER, data)
+        self.assertEqual(data['output_config']['format'], {'type': 'json'})
+
+    def test_ambiguous_or_gateway_routing_bodies_are_refused(self):
+        for raw in ('{"model":"openai/gpt-6.2-sol","Model":"other"}',
+                    '{"model":"openai/gpt-6.2-sol","model":"other"}',
+                    '{"model":"openai/gpt-6.2-sol","output_config":{"effort":"xhigh","EFFORT":"low"}}',
+                    '{"model":"openai/gpt-6.2-sol","temperature":NaN}'):
+            with self.assertRaises(ValueError, msg=raw):
+                relay.parse(raw)
+        routed = {'model': 'openai/gpt-6.2-sol', 'Fallbacks': [{'model': 'other'}]}
+        self.assertIsNotNone(relay.policy(MANAGER, '/v1/messages', routed))
 
     def test_relay_launcher_and_cloudcli_pin_the_same_manager_pair(self):
         config = json.loads((BASE / 'relay.json').read_text())
@@ -137,6 +159,20 @@ class LauncherTests(unittest.TestCase):
                          ('cn25-codex', 'deepseek/deepseek-flash', 'max'))
         self.assertEqual(launch.ROLES['worker']['model'], worker['model'])
 
+    def test_bridge_refuses_a_peer_other_than_127_0_0_1(self):
+        class Peer:
+            closed = False
+            def __init__(self, host): self.host = host
+            def getpeername(self): return (self.host, 40000)
+            def __enter__(self): return self
+            def __exit__(self, *args): self.closed = True
+        with patch.object(launch, 'peer_uid', return_value=os.getuid()), \
+                patch.object(launch.socket, 'socket') as relay_socket:
+            peer = Peer('127.0.0.2')
+            launch.bridge(peer, 41000, '/nonexistent/manager.sock')
+        relay_socket.assert_not_called()
+        self.assertTrue(peer.closed)
+
     def test_no_session_starts_without_the_relay(self):
         with tempfile.TemporaryDirectory() as empty, patch.object(launch, 'RUN_DIR', empty), \
                 patch.object(launch.subprocess, 'Popen') as popen:
@@ -160,6 +196,7 @@ class LauncherTests(unittest.TestCase):
 
 class Upstream(http.server.BaseHTTPRequestHandler):
     seen = []
+    bodies = []
 
     def log_message(self, *args):
         pass
@@ -167,10 +204,13 @@ class Upstream(http.server.BaseHTTPRequestHandler):
     def do_POST(self):
         body = self.rfile.read(int(self.headers['Content-Length']))
         Upstream.seen.append((self.path, self.headers.get('x-api-key'), json.loads(body)['model']))
+        Upstream.bodies.append(body)
         reply = b'event: message_stop\ndata: {}\n\n'
         self.send_response(200)
         self.send_header('Content-Type', 'text/event-stream')
         self.send_header('request-id', 'req_fixture')
+        self.send_header('retry-after', '7')
+        self.send_header('x-internal', 'dropped')
         self.send_header('Content-Length', str(len(reply)))
         self.end_headers()
         self.wfile.write(reply)
@@ -190,6 +230,7 @@ class UnixConnection(http.client.HTTPConnection):
 class RelayRoundTripTests(unittest.TestCase):
     def setUp(self):
         Upstream.seen = []
+        Upstream.bodies = []
         self.upstream = http.server.HTTPServer(('127.0.0.1', 0), Upstream)
         threading.Thread(target=self.upstream.serve_forever, daemon=True).start()
         port = self.upstream.server_address[1]
@@ -212,15 +253,32 @@ class RelayRoundTripTests(unittest.TestCase):
         connection.request('POST', target, body=json.dumps(body),
                            headers={'Content-Type': 'application/json', 'x-api-key': 'cn25-relay-placeholder'})
         response = connection.getresponse()
+        self.headers = dict(response.getheaders())
         return response.status, response.read()
 
     def test_pinned_request_reaches_the_gateway_with_the_relay_key_only(self):
         status, body = self.post('/v1/messages?beta=true', {'model': 'openai/gpt-6.2-sol',
-                                                            'output_config': {'effort': 'xhigh'}, 'stream': True})
+                                                            'output_config': {'effort': 'high'}, 'stream': True})
         self.assertEqual(status, 200)
         self.assertIn(b'message_stop', body)
         self.assertEqual(Upstream.seen, [('/anthropic/v1/messages', 'sk-bf-fixture', 'openai/gpt-6.2-sol')])
         self.assertEqual(os.stat(self.path).st_mode & 0o777, 0o600)
+        self.assertEqual(self.headers.get('retry-after'), '7')
+        self.assertNotIn('x-internal', self.headers)
+        self.assertEqual(json.loads(Upstream.bodies[0])['output_config'], {'effort': 'xhigh'})
+
+    def test_ambiguous_body_never_reaches_the_gateway(self):
+        connection = UnixConnection(self.path)
+        connection.request('POST', '/v1/messages', body='{"model":"openai/gpt-6.2-sol","Model":"other"}',
+                           headers={'Content-Type': 'application/json'})
+        self.assertEqual(connection.getresponse().status, 400)
+        self.assertEqual(Upstream.seen, [])
+
+    def test_unreachable_gateway_is_a_502(self):
+        self.server.upstream = dict(self.server.upstream, port=1)
+        status, body = self.post('/v1/messages', {'model': 'openai/gpt-6.2-sol'})
+        self.assertEqual(status, 502)
+        self.assertNotIn(b'sk-bf-fixture', body)
 
     def test_other_models_never_reach_the_gateway(self):
         status, body = self.post('/v1/messages', {'model': 'claude-opus-5-5'})

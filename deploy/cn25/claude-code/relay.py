@@ -3,9 +3,9 @@
 
 Each configured role gets a Unix socket that only that role's account can
 open. A request is forwarded only when it is POST /v1/messages naming the
-role's pinned model, with the pinned effort or none. The relay adds the key,
-streams the gateway reply back and logs policy facts only, never content,
-headers or credentials. Claude Code itself runs `--bare` with a placeholder.
+role's pinned model; the relay sets the role's pinned effort on every request,
+adds the key, streams the gateway reply back and logs policy facts only,
+never content, headers or credentials. Claude Code itself runs `--bare` with a placeholder.
 """
 import http.client
 import http.server
@@ -28,6 +28,10 @@ MAX_BODY = 64 * 1024 * 1024
 EFFORTS = ('low', 'medium', 'high', 'xhigh', 'max')
 KEY_LINE = re.compile(r'^CODEX_GATEWAY_API_KEY=([\x22\x27]?)(sk-bf-[A-Za-z0-9_-]+)\1$', re.M)
 REQUEST_ID = re.compile(r'[A-Za-z0-9._-]{1,100}')
+# Gateway-specific body fields that could route around the pinned model.
+GATEWAY_FIELDS = ('fallbacks',)
+# Reply headers Claude Code needs for retries and integrity.
+REPLY_HEADERS = ('Content-Length', 'retry-after', 'x-should-retry')
 
 
 def read_key(path=KEY_FILE):
@@ -55,6 +59,22 @@ def load_config(path=CONFIG):
     return config
 
 
+def unique_keys(pairs):
+    # The gateway may match keys case-insensitively; an object that is
+    # ambiguous under either reading is refused rather than forwarded.
+    seen = set()
+    for key, _value in pairs:
+        if key.casefold() in seen:
+            raise ValueError('ambiguous JSON key')
+        seen.add(key.casefold())
+    return dict(pairs)
+
+
+def parse(body):
+    return json.loads(body, object_pairs_hook=unique_keys,
+                      parse_constant=lambda _: (_ for _ in ()).throw(ValueError('non-finite number')))
+
+
 def policy(role, target, data):
     """Return the refusal reason for a request, or None to forward it."""
     url = urlsplit(target)
@@ -62,13 +82,22 @@ def policy(role, target, data):
         return 'only Messages POST is relayed'
     if not isinstance(data, dict):
         return 'request body is not a JSON object'
+    if any(key.casefold() in GATEWAY_FIELDS for key in data):
+        return 'gateway routing fields are not relayed'
     if data.get('model') != role['model']:
         return 'model is pinned for this role'
-    output = data.get('output_config')
-    effort = output.get('effort') if isinstance(output, dict) else None
-    if effort is not None and effort != role['effort']:
-        return 'effort is pinned for this role'
+    if not isinstance(data.get('output_config', {}), dict):
+        return 'output_config is not an object'
     return None
+
+
+def pin_effort(role, data):
+    """Set the role's effort whatever the CLI chose; return what it asked for."""
+    output = dict(data.get('output_config') or {})
+    requested = output.get('effort')
+    output['effort'] = role['effort']
+    data['output_config'] = output
+    return requested if requested in EFFORTS else None
 
 
 def peer_uid(sock):
@@ -82,6 +111,7 @@ def log(role, **facts):
 
 class Handler(http.server.BaseHTTPRequestHandler):
     server_version = 'cn25-claude-relay'
+    timeout = 120
 
     def log_message(self, *args):
         pass
@@ -109,18 +139,19 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self.refuse(413, 'request body size is out of range')
         body = self.rfile.read(length)
         try:
-            data = json.loads(body)
-        except ValueError:
-            return self.refuse(400, 'request body is not JSON')
+            data = parse(body)
+        except (ValueError, RecursionError):
+            return self.refuse(400, 'request body is not unambiguous JSON')
         role = self.server.role
         reason = policy(role, self.path, data)
         if reason:
             return self.refuse(403 if 'Messages' in reason else 422, reason)
-        output = data.get('output_config')
-        effort = output.get('effort') if isinstance(output, dict) else None
-        self.forward(body, effort, data.get('stream') is True)
+        requested = pin_effort(role, data)
+        # Forward exactly what was checked, never the original bytes.
+        canonical = json.dumps(data, ensure_ascii=False, separators=(',', ':')).encode()
+        self.forward(canonical, requested, data.get('stream') is True)
 
-    def forward(self, body, effort, stream):
+    def forward(self, body, requested, stream):
         upstream = self.server.upstream
         headers = {'Content-Type': 'application/json', 'x-api-key': self.server.key,
                    'anthropic-version': self.headers.get('anthropic-version') or '2023-06-01',
@@ -130,8 +161,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
         connection = self.server.connect(upstream)
         sent = 0
         try:
-            connection.request('POST', upstream['path'], body=body, headers=headers)
-            response = connection.getresponse()
+            try:
+                connection.request('POST', upstream['path'], body=body, headers=headers)
+                response = connection.getresponse()
+            except (OSError, http.client.HTTPException) as error:
+                log(self.server.role_name, transport_error=type(error).__name__)
+                return self.refuse(502, 'gateway unreachable')
             reference = response.getheader('x-bifrost-request-id') or response.getheader('request-id') or ''
             if 300 <= response.status < 400:
                 return self.refuse(502, 'gateway redirect rejected')
@@ -139,12 +174,16 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self.send_header('Content-Type', response.getheader('Content-Type', 'application/octet-stream'))
             if REQUEST_ID.fullmatch(reference):
                 self.send_header('request-id', reference)
+            for name, value in response.getheaders():
+                if name.lower() in [header.lower() for header in REPLY_HEADERS] or name.lower().startswith('anthropic-ratelimit-'):
+                    self.send_header(name, value)
             self.end_headers()
             for chunk in iter(lambda: response.read1(65536), b''):
                 self.wfile.write(chunk)
                 self.wfile.flush()
                 sent += len(chunk)
-            log(self.server.role_name, status=response.status, effort=effort, stream=stream,
+            log(self.server.role_name, status=response.status, requested_effort=requested,
+                effort=self.server.role['effort'], stream=stream,
                 bytes_out=sent, request_id=reference if REQUEST_ID.fullmatch(reference) else None)
         except (OSError, http.client.HTTPException) as error:
             log(self.server.role_name, transport_error=type(error).__name__, bytes_out=sent)

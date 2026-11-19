@@ -18,7 +18,9 @@ function assertLockedOptions(options: AnyRecord | undefined) {
   assert.equal(options.model, 'openai/gpt-6.2-sol');
   assert.equal(options.effort, 'xhigh');
   assert.equal(options.pathToClaudeCodeExecutable, launcher);
-  assert.deepEqual(options.env, { CLAUDE_CODE_ENTRYPOINT: 'claudecodeui' });
+  assert.equal(options.env.CLAUDE_CODE_ENTRYPOINT, 'claudecodeui');
+  assert.deepEqual(Object.keys(options.env).filter((name) => !['CLAUDE_CODE_ENTRYPOINT', 'CLAUDE_CODE_ARTIFACT',
+    'CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS'].includes(name)), [], 'no host environment reaches the CLI');
   assert.deepEqual(options.settingSources, []);
   assert.equal(options.strictMcpConfig, true);
   assert.equal(options.extraArgs.bare, null);
@@ -87,6 +89,7 @@ test('CN25 Claude runtime locks a resumed session after resolving its saved mode
   assert.equal(calls[0].resume, 'native-candidate-session');
   assert.equal(calls[0].extraArgs['replay-user-messages'], null);
   assert.equal(calls[0].permissionMode, 'bypassPermissions');
+  assert.ok(calls[0].env.CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS, 'the background-agent ceiling survives the lock');
   assert.equal(calls[0].allowDangerouslySkipPermissions, true);
   assert.equal(calls[0].systemPrompt.append, role);
 });
