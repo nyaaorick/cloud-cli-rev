@@ -8,7 +8,10 @@ import type {
   ProviderAuthSubscriptionOverride,
 } from '@/shared/types';
 
-const CLI_PROVIDERS: LLMProvider[] = ['claude', 'cursor', 'codex', 'opencode'];
+// The CN25 manager server serves Claude alone and rejects other providers.
+const CLI_PROVIDERS: LLMProvider[] = import.meta.env.VITE_CN25_MANAGER_MODE === '1'
+  ? ['claude']
+  : ['claude', 'cursor', 'codex', 'opencode'];
 
 const createInitialProviderAuthStatusMap = (loading = true): ProviderAuthStatusMap => ({
   claude: { authenticated: false, email: null, method: null, error: null, loading },

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.37.8-rev.10 — 2026-11-19
+
+- CN25 manager switches to Claude Code, API-only (`CN25_CLAUDE_API_ONLY=1`). The server serves Claude alone, locks every primary and side-question session to `openai/gpt-6.2-sol` / `xhigh`, appends the fixed manager role, gives primary sessions Full Access and reports API-key authentication instead of an account login. The manager build shows Claude only.
+- Adds `deploy/cn25/claude-code/`: the root Messages relay (the only Bifrost key holder, one socket per role, pinned model and effort) and the fixed `--bare` launcher that refuses account and installer commands and starts no session without the relay.
+
 ## 1.37.8-rev.9 — 2026-11-18
 
 - Codex 模型菜单增加 GPT-6.2 Astra 和 GPT-6.2 Sol，支持两款模型的六档思考深度。

@@ -43,7 +43,7 @@ import {
   getReportedClaudeContextWindow,
   rememberClaudeContextWindow
 } from '@/modules/providers/services/provider-token-usage.service.js';
-import { createCompleteMessage, createNormalizedMessage, errorMessage } from '@/shared/utils.js';
+import { applyCn25ClaudeApiOnly, createCompleteMessage, createNormalizedMessage, errorMessage } from '@/shared/utils.js';
 import type {
   AnyRecord,
   BackgroundTaskSummary,
@@ -1508,6 +1508,8 @@ async function queryClaudeSDK(
 
       return { behavior: 'deny', message: decision.message ?? 'User denied tool use' };
     };
+
+    applyCn25ClaudeApiOnly(sdkOptions, { fullAccess: true });
 
     // The SDK's own `query`, unless the caller supplies one (tests script the
     // stream to drive the hold logic below without a CLI process).

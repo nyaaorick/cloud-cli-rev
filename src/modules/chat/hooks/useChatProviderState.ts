@@ -29,7 +29,8 @@ const toProviderEffortOptions = (
 ): NonNullable<ProviderModelOption['effort']>['values'] => values.map((value) => ({ value }));
 
 const FALLBACK_DEFAULT_MODEL: Record<LLMProvider, string> = {
-  claude: 'default',
+  // The CN25 manager server locks every Claude session to this model.
+  claude: import.meta.env.VITE_CN25_MANAGER_MODE === '1' ? 'openai/gpt-6.2-sol' : 'default',
   cursor: 'gpt-5.3-codex',
   // The server catalog's DEFAULT. A new browser keeps this model for as long
   // as the catalog lists it, so it must be one the bundled Codex CLI knows;
@@ -38,7 +39,10 @@ const FALLBACK_DEFAULT_MODEL: Record<LLMProvider, string> = {
   opencode: 'anthropic/claude-sonnet-4-5',
 };
 
-const PROVIDERS: LLMProvider[] = ['claude', 'cursor', 'codex', 'opencode'];
+// The CN25 manager server serves Claude alone and rejects other providers.
+const PROVIDERS: LLMProvider[] = import.meta.env.VITE_CN25_MANAGER_MODE === '1'
+  ? ['claude']
+  : ['claude', 'cursor', 'codex', 'opencode'];
 
 /** localStorage key holding the user's default model for one provider. */
 const providerModelStorageKey = (provider: LLMProvider): string => `${provider}-model`;

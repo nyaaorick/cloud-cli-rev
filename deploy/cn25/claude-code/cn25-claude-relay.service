@@ -1,0 +1,21 @@
+[Unit]
+Description=CN25 Claude Code Messages relay (sole Bifrost key holder)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=root
+UMask=0077
+RuntimeDirectory=cn25-claude
+RuntimeDirectoryMode=0755
+ExecStart=/usr/bin/python3 -I /usr/local/libexec/cn25-claude-code/relay.py
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+
+[Install]
+WantedBy=multi-user.target

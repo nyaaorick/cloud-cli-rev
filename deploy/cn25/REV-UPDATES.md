@@ -79,3 +79,13 @@ existing tunnel environment without restarting it, verifies the local
 diagnostics and physical browser, and then removes only explicitly proven duplicate
 artifacts. Failed/unknown attempts remain intact. Existing CLI descendants keep
 the update waiting; the requesting manager is never killed to finish it.
+
+Rev 10 switches the CN25 manager to Claude Code, API-only. Before activating the
+app, install `deploy/cn25/claude-code/` as its README describes and confirm one
+real tool turn through `manager-launch` (relay log shows HTTP 200 at `xhigh`, no
+non-loopback connect from the CLI). At the guarded idle cutover, replace the Rev
+unit's Codex environment with `CN25_CLAUDE_API_ONLY=1` and
+`CLAUDE_CLI_PATH=/usr/local/libexec/cn25-claude-code/manager-launch`, and drop the
+Bifrost `EnvironmentFile`: the app no longer holds the key. The post-activation
+browser check must use Claude endpoints; Codex sessions and capabilities no longer
+exist on the host. Keep the previous override for rollback.

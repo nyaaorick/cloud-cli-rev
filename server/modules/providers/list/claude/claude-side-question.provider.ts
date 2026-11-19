@@ -1,7 +1,7 @@
 import { query } from '@anthropic-ai/claude-agent-sdk';
 
 import { resolveClaudeCodeExecutablePath } from '@/shared/claude-cli-path.js';
-import { errorMessage } from '@/shared/utils.js';
+import { applyCn25ClaudeApiOnly, errorMessage } from '@/shared/utils.js';
 import type {
   AnyRecord,
   BackgroundTaskSummary,
@@ -115,6 +115,8 @@ async function runSideQuestionQuery(
     pathToClaudeCodeExecutable: resolveClaudeCodeExecutablePath(process.env.CLAUDE_CLI_PATH),
     systemPrompt: { type: 'preset', preset: 'claude_code', append: SIDE_QUESTION_SYSTEM_PROMPT_APPEND },
   };
+
+  applyCn25ClaudeApiOnly(options);
 
   const finish = (outcome: SideQuestionOutcome): SideQuestionOutcome => {
     request.signal.removeEventListener('abort', onAbort);

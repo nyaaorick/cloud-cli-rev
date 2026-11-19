@@ -68,6 +68,61 @@ export function getRevInstallation(appRoot: string): { mode: 'managed' | 'git' |
  */
 export const IS_PLATFORM = process.env.VITE_IS_PLATFORM === 'true';
 
+//----------------- CN25 CLAUDE SDK LAUNCH POLICY ------------
+/**
+ * Providers' primary and side-question runtimes call this after resolving all
+ * request and session options. Enable only with the CN25 systemd deployment:
+ * the fixed launcher owns the API key boundary, workspace and network policy.
+ * Never fall back to an SDK-bundled CLI if that executable is missing.
+ * The manager role is a fixed root-owned file; without it no session starts.
+ * Only the primary runtime gets Full Access; side questions keep their own
+ * read-only tool set and permission mode.
+ */
+export const CN25_MANAGER_ROLE_PATH = '/usr/local/libexec/cn25-claude-code/manager-role.md';
+
+export function applyCn25ClaudeApiOnly(options: AnyRecord, { fullAccess = false }: { fullAccess?: boolean } = {}): void {
+  if (process.env.CN25_CLAUDE_API_ONLY !== '1') return;
+
+  const role = fs.readFileSync(CN25_MANAGER_ROLE_PATH, 'utf8').trim();
+  if (!role.includes('CN25 manager')) {
+    throw new Error('CN25 manager role is unavailable; no session is started without it.');
+  }
+  const append = options.systemPrompt?.append;
+  options.systemPrompt = {
+    type: 'preset',
+    preset: 'claude_code',
+    append: typeof append === 'string' && append ? `${role}\n\n${append}` : role,
+  };
+  if (fullAccess) {
+    options.permissionMode = 'bypassPermissions';
+    options.allowDangerouslySkipPermissions = true;
+  }
+
+  const model = 'openai/gpt-6.2-sol';
+  Object.assign(options, {
+    model,
+    effort: 'xhigh',
+    pathToClaudeCodeExecutable: '/usr/local/libexec/cn25-claude-code/manager-launch',
+    env: { CLAUDE_CODE_ENTRYPOINT: 'claudecodeui' },
+    settingSources: [],
+    strictMcpConfig: true,
+    extraArgs: { ...options.extraArgs, bare: null, 'disable-slash-commands': null },
+    settings: {
+      disableAllHooks: true,
+      enableClaudeAiMcpServers: false,
+      feedbackSurveyRate: 0,
+      remoteControlAtStartup: false,
+      agentView: false,
+      autoMemoryEnabled: false,
+      autoDreamEnabled: false,
+      modelPicker: { options: [{ model, behavesAs: 'claude-opus-4-8' }] },
+    },
+  });
+  delete options.mcpServers;
+  delete options.hooks;
+  delete options.onElicitation;
+}
+
 // ---------------------------
 //----------------- NORMALIZED MESSAGE HELPER INPUT TYPES ------------
 /**

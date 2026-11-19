@@ -61,6 +61,19 @@ export class ClaudeProviderAuth implements IProviderAuth {
       };
     }
 
+    // CN25 API-only: the fixed launcher runs `--bare` behind the gateway relay,
+    // so account logins and local credentials are never read.
+    if (process.env.CN25_CLAUDE_API_ONLY === '1') {
+      return {
+        installed,
+        provider: 'claude',
+        installedVersion,
+        authenticated: true,
+        email: 'CN25 Bifrost gateway',
+        method: 'api_key',
+      };
+    }
+
     const credentials = await this.checkCredentials();
 
     return {

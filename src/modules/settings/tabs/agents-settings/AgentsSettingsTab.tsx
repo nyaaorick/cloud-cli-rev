@@ -40,7 +40,7 @@ export default function AgentsSettingsTab({
   ), [selectedAgent]);
 
   const visibleAgents = useMemo<AgentProvider[]>(() => {
-    return ['claude', 'cursor', 'codex', 'opencode'];
+    return import.meta.env.VITE_CN25_MANAGER_MODE === '1' ? ['claude'] : ['claude', 'cursor', 'codex', 'opencode'];
   }, []);
 
   const agentContextById = useMemo<AgentContextByProvider>(() => ({

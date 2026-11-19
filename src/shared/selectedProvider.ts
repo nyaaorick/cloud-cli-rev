@@ -16,9 +16,13 @@ import { readUserPreference, writeUserPreference } from '@/shared/userSettings';
  * choice both reaches every reader at once and follows the user between devices.
  */
 
-const PROVIDERS: LLMProvider[] = ['claude', 'cursor', 'codex', 'opencode'];
+// The CN25 manager build serves Claude Code alone; a stored choice of another
+// provider falls back to it.
+const PROVIDERS: LLMProvider[] = import.meta.env.VITE_CN25_MANAGER_MODE === '1'
+  ? ['claude']
+  : ['claude', 'cursor', 'codex', 'opencode'];
 
-const DEFAULT_PROVIDER: LLMProvider = import.meta.env.VITE_CN25_MANAGER_MODE === '1' ? 'codex' : 'claude';
+const DEFAULT_PROVIDER: LLMProvider = 'claude';
 
 export function readSelectedProvider(): LLMProvider {
   const stored = readUserPreference<string | null>('selectedProvider', null);

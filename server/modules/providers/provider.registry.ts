@@ -18,13 +18,16 @@ const providers: Record<LLMProvider, IProvider> = {
  */
 export const providerRegistry = {
   listProviders(): IProvider[] {
+    // The CN25 API-only deployment serves Claude Code alone; other providers'
+    // CLIs, homes and credentials are removed from that host.
+    if (process.env.CN25_CLAUDE_API_ONLY === '1') return [providers.claude];
     return Object.values(providers);
   },
 
   resolveProvider(provider: string): IProvider {
     const key = provider as LLMProvider;
     const resolvedProvider = providers[key];
-    if (!resolvedProvider) {
+    if (!resolvedProvider || (process.env.CN25_CLAUDE_API_ONLY === '1' && key !== 'claude')) {
       throw new AppError(`Unsupported provider "${provider}".`, {
         code: 'UNSUPPORTED_PROVIDER',
         statusCode: 400,
