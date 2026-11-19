@@ -1,7 +1,8 @@
 {
   "upstream": {"host": "hubs.foliodude.it.com", "port": 8443, "path": "/anthropic/v1/messages"},
   "roles": {
-    "manager": {"user": "cn25-manager", "model": "openai/gpt-6.2-sol", "effort": "xhigh"},
+    "manager": {"user": "cn25-manager", "model": "openai/gpt-6.2-sol", "effort": "xhigh",
+                "strip_reasoning_history": true},
     "worker": {"user": "cn25-codex", "model": "deepseek/deepseek-flash", "effort": "max"}
   }
 }

@@ -56,6 +56,27 @@ class PolicyTests(unittest.TestCase):
         relay.pin_effort(MANAGER, data)
         self.assertEqual(data['output_config']['format'], {'type': 'json'})
 
+    def test_manager_history_is_sent_without_earlier_reasoning(self):
+        role = dict(MANAGER, strip_reasoning_history=True)
+        data = {'model': 'openai/gpt-6.2-sol', 'messages': [
+            {'role': 'user', 'content': 'run it'},
+            {'role': 'assistant', 'content': [{'type': 'redacted_thinking', 'data': 'x'},
+                                              {'type': 'tool_use', 'id': 't1', 'name': 'Bash', 'input': {}}]},
+            {'role': 'user', 'content': [{'type': 'tool_result', 'tool_use_id': 't1', 'content': 'ok'}]},
+            {'role': 'assistant', 'content': [{'type': 'thinking', 'thinking': 'y', 'signature': 's'}]},
+            {'role': 'assistant', 'content': 'plain'},
+        ]}
+        self.assertEqual(relay.strip_reasoning_history(role, data), 1)
+        self.assertEqual(data['messages'][1]['content'], [{'type': 'tool_use', 'id': 't1', 'name': 'Bash', 'input': {}}])
+        self.assertEqual(len(data['messages'][3]['content']), 1, 'a message is never emptied')
+        self.assertEqual(data['messages'][2]['content'][0]['type'], 'tool_result')
+        untouched = {'messages': [{'role': 'assistant', 'content': [{'type': 'thinking', 'thinking': 'y'},
+                                                                    {'type': 'text', 'text': 'z'}]}]}
+        self.assertEqual(relay.strip_reasoning_history(MANAGER, untouched), 0)
+        config = json.loads((BASE / 'relay.json').read_text())
+        self.assertTrue(config['roles']['manager']['strip_reasoning_history'])
+        self.assertNotIn('strip_reasoning_history', config['roles']['worker'])
+
     def test_ambiguous_or_gateway_routing_bodies_are_refused(self):
         for raw in ('{"model":"openai/gpt-6.2-sol","Model":"other"}',
                     '{"model":"openai/gpt-6.2-sol","model":"other"}',

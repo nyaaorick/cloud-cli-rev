@@ -91,6 +91,29 @@ def policy(role, target, data):
     return None
 
 
+def strip_reasoning_history(role, data):
+    """Drop earlier reasoning blocks for roles that ask for it; return how many.
+
+    Re-sent encrypted GPT reasoning makes the gateway's Responses conversion
+    fail with "An input item conflicts with an existing record".
+    """
+    if not role.get('strip_reasoning_history'):
+        return 0
+    stripped = 0
+    for message in data.get('messages') or []:
+        if not isinstance(message, dict) or message.get('role') != 'assistant':
+            continue
+        content = message.get('content')
+        if not isinstance(content, list):
+            continue
+        kept = [block for block in content
+                if not (isinstance(block, dict) and block.get('type') in ('thinking', 'redacted_thinking'))]
+        if kept and len(kept) != len(content):
+            stripped += len(content) - len(kept)
+            message['content'] = kept
+    return stripped
+
+
 def pin_effort(role, data):
     """Set the role's effort whatever the CLI chose; return what it asked for."""
     output = dict(data.get('output_config') or {})
@@ -147,6 +170,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if reason:
             return self.refuse(403 if 'Messages' in reason else 422, reason)
         requested = pin_effort(role, data)
+        self.stripped = strip_reasoning_history(role, data)
         # Forward exactly what was checked, never the original bytes.
         canonical = json.dumps(data, ensure_ascii=False, separators=(',', ':')).encode()
         self.forward(canonical, requested, data.get('stream') is True)
@@ -183,7 +207,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 self.wfile.flush()
                 sent += len(chunk)
             log(self.server.role_name, status=response.status, requested_effort=requested,
-                effort=self.server.role['effort'], stream=stream,
+                effort=self.server.role['effort'], stream=stream, stripped_reasoning=self.stripped,
                 bytes_out=sent, request_id=reference if REQUEST_ID.fullmatch(reference) else None)
         except (OSError, http.client.HTTPException) as error:
             log(self.server.role_name, transport_error=type(error).__name__, bytes_out=sent)
